@@ -1,0 +1,24 @@
+name: 每日显影
+on:
+  schedule:
+    - cron: "30 23 * * *"   # UTC 23:30 = 北京 07:30
+  workflow_dispatch: {}      # 也可手动冲洗一版
+permissions:
+  contents: write
+jobs:
+  develop:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: 冲洗
+        run: python radar.py
+      - name: 定影
+        run: |
+          git config user.name "ciel-radar"
+          git config user.email "ciel-radar@users.noreply.github.com"
+          git add data/ docs/
+          git diff --cached --quiet && echo "今日无新影像" && exit 0
+          git commit -m "显影 $(date -u +%F)"
+          git push
