@@ -1,0 +1,74 @@
+{
+  "jobs": [
+    {
+      "source": "boss",
+      "capture_method": "manual_entry",
+      "source_job_id": null,
+      "url": "https://www.zhipin.com/job_detail/example-4001.html",
+      "title": "平面插画助理",
+      "company": "示例文化工作室",
+      "location_raw": "北京·朝阳区",
+      "city": "Beijing",
+      "region": "Beijing",
+      "country_code": "CN",
+      "work_arrangement": "hybrid",
+      "remote_scope": "limited",
+      "allowed_countries": [
+        "CN"
+      ],
+      "allowed_regions": [],
+      "employment_type": "full_time",
+      "currency": "CNY",
+      "salary_min": 8000,
+      "salary_max": 12000,
+      "pay_period": "month",
+      "annual_pay_periods": 13,
+      "experience_min_years": 0,
+      "experience_max_years": 1,
+      "portfolio": "required",
+      "role_families": [
+        "illustration",
+        "graphic-design"
+      ],
+      "seniority": "junior",
+      "people_management": "not_required",
+      "summary": "协助完成平面插画与日常视觉物料制作。",
+      "published_on": null
+    },
+    {
+      "source": "linkedin",
+      "capture_method": "user_received_job_alert",
+      "source_job_id": "example-5001",
+      "url": "https://www.linkedin.com/jobs/view/example-5001/",
+      "title": "Junior Community Illustrator",
+      "company": "Example Community",
+      "location_raw": "Remote — China",
+      "city": null,
+      "region": null,
+      "country_code": null,
+      "work_arrangement": "remote",
+      "remote_scope": "limited",
+      "allowed_countries": [
+        "CN"
+      ],
+      "allowed_regions": [],
+      "employment_type": "contract",
+      "currency": null,
+      "salary_min": null,
+      "salary_max": null,
+      "pay_period": null,
+      "annual_pay_periods": null,
+      "experience_min_years": null,
+      "experience_max_years": null,
+      "portfolio": "preferred",
+      "role_families": [
+        "illustration",
+        "community-content"
+      ],
+      "seniority": "junior",
+      "people_management": "unknown",
+      "summary": "Creates lightweight illustration assets for an online community.",
+      "published_on": "2026-07-27"
+    }
+  ]
+}

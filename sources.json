@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "_description": "Source capability registry. It defines how job data may enter the project; it does not contain personal filters or credentials.",
+  "policy": {
+    "allowed_url_schemes": [
+      "https"
+    ],
+    "publish_full_job_descriptions": false,
+    "store_platform_credentials": false,
+    "auto_apply": false,
+    "auto_message": false,
+    "bypass_access_controls": false
+  },
+  "sources": [
+    {
+      "id": "greenhouse",
+      "label": "Greenhouse",
+      "mode": "automatic",
+      "status": "available",
+      "input_methods": [
+        "public_job_board_api"
+      ],
+      "github_actions": true,
+      "project_handles_login": false,
+      "storage": "public_metadata"
+    },
+    {
+      "id": "smartrecruiters",
+      "label": "SmartRecruiters",
+      "mode": "automatic",
+      "status": "available",
+      "input_methods": [
+        "public_job_board_api"
+      ],
+      "github_actions": true,
+      "project_handles_login": false,
+      "storage": "public_metadata"
+    },
+    {
+      "id": "workday",
+      "label": "Workday",
+      "mode": "automatic",
+      "status": "available",
+      "input_methods": [
+        "public_career_site_endpoint"
+      ],
+      "github_actions": true,
+      "project_handles_login": false,
+      "storage": "public_metadata"
+    },
+    {
+      "id": "boss",
+      "label": "BOSS直聘",
+      "mode": "assisted",
+      "status": "planned",
+      "input_methods": [
+        "manual_entry",
+        "local_file_import",
+        "user_received_job_alert"
+      ],
+      "search_url": "https://www.zhipin.com/web/geek/job",
+      "github_actions": false,
+      "project_handles_login": false,
+      "storage": "local_only",
+      "blocked_methods": [
+        "cookie_or_token_collection",
+        "captcha_bypass",
+        "anti_bot_evasion",
+        "unattended_scraping",
+        "automated_messaging",
+        "automated_application"
+      ]
+    },
+    {
+      "id": "linkedin",
+      "label": "LinkedIn",
+      "mode": "assisted",
+      "status": "planned",
+      "input_methods": [
+        "manual_entry",
+        "local_file_import",
+        "user_received_job_alert"
+      ],
+      "search_url": "https://www.linkedin.com/jobs/",
+      "github_actions": false,
+      "project_handles_login": false,
+      "storage": "local_only",
+      "blocked_methods": [
+        "cookie_or_token_collection",
+        "browser_extension_scraping",
+        "captcha_bypass",
+        "access_control_bypass",
+        "unattended_scraping",
+        "automated_messaging",
+        "automated_application"
+      ]
+    }
+  ]
+}

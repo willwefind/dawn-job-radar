@@ -1,15 +1,16 @@
 <!DOCTYPE html>
 <html lang="zh-CN"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy"
+  content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>职途显影 · Job Radar</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600&family=Lora:wght@400;500&family=Noto+Sans+SC:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root {
   --dark:#141413; --light:#faf9f5; --mid:#b0aea5; --lightgray:#e8e6dc;
   --orange:#d97757; --blue:#6a9bcc; --green:#788c5d;
-  --font-head:"Poppins","Noto Sans SC",Arial,sans-serif;
-  --font-body:"Lora","Noto Sans SC",Georgia,serif;
+  --font-head:Inter,"Noto Sans SC","PingFang SC","Microsoft YaHei",Arial,sans-serif;
+  --font-body:"Iowan Old Style","Noto Serif SC","Songti SC",Georgia,serif;
 }
 * { box-sizing:border-box; }
 body { margin:0; background:var(--light); color:var(--dark);
@@ -66,18 +67,18 @@ footer { text-align:center; font-size:12px; color:var(--mid); margin-top:44px;
 <div class="sub" id="sub"></div>
 <div class="errnote" id="errnote"></div>
 <div class="controls" id="controls"></div>
-<input id="q" placeholder="搜职位、公司、城市……">
+<input id="q" type="search" placeholder="搜职位、公司、城市……">
 <div id="feed"></div>
-<button id="more">加载更多 ↓</button>
-<div class="empty" id="empty">暂时没有符合条件的职位。换个筛选，或明早再来。</div>
-<footer>dawn-job-radar · 每天 07:30 自动更新 · 名单与口味随时可改</footer>
+<button id="more" type="button">加载更多 ↓</button>
+<div class="empty" id="empty">暂时没有符合条件的职位。换个筛选，或稍后再来。</div>
+<footer>dawn-job-radar · 公开职位信息 · 请以原始招聘页面为准</footer>
 </div>
 <script src="jobs.js"></script>
 <script>
 const M=window.META,J=window.JOBS;
-let track="*",fresh=false,hideSenior=true,hideTech=true,earlyOnly=false,limit=60;
+let track="*",fresh=false,hideSenior=false,hideTech=false,earlyOnly=false,limit=60;
 const trackColor={};M.tracks.forEach((t,i)=>trackColor[t]="t"+(i%3));
-document.getElementById("topline").textContent=`[${M.yy}｜Ciel｜${M.mood}]`;
+document.getElementById("topline").textContent=`[${M.yy}｜${M.mood}]`;
 document.getElementById("sub").innerHTML=
  `在架 <b>${M.total}</b> 个 · 今日新到 <b>${M.new_n}</b> 个 · 更新于 ${M.updated}`;
 if(M.errors.length){const e=document.getElementById("errnote");e.style.display="block";
@@ -92,25 +93,30 @@ function tchip(label,val){const b=chip(label,val==="*",()=>{
  trackChips.push(b);}
 tchip("全部","*");M.tracks.forEach(t=>tchip(t,t));
 chip("只看新到",false,b=>{fresh=!fresh;b.classList.toggle("on",fresh);});
-chip("隐藏资深岗",true,b=>{hideSenior=!hideSenior;b.classList.toggle("on",hideSenior);});
-chip("隐藏技术岗",true,b=>{hideTech=!hideTech;b.classList.toggle("on",hideTech);});
-chip("校招·早期",false,b=>{earlyOnly=!earlyOnly;b.classList.toggle("on",earlyOnly);});
-const esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+chip("排除资深标题",false,b=>{hideSenior=!hideSenior;b.classList.toggle("on",hideSenior);});
+chip("排除技术标题",false,b=>{hideTech=!hideTech;b.classList.toggle("on",hideTech);});
+chip("只看早期标题信号",false,b=>{earlyOnly=!earlyOnly;b.classList.toggle("on",earlyOnly);});
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>(
+ {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function safeUrl(value){try{const u=new URL(String(value),window.location.href);
+ return (u.protocol==="http:"||u.protocol==="https:")&&!u.username&&!u.password
+  ?u.href:null;}catch{return null;}}
 function draw(){
  const q=document.getElementById("q").value.trim().toLowerCase();
- const hit=J.filter(j=>(track==="*"||j.k===track)
+ const hit=J.filter(j=>safeUrl(j.u)&&(track==="*"||j.k===track)
   &&(!fresh||j.f===M.updated)
   &&(!hideSenior||j.s!==2)
   &&(!hideTech||j.r!==1)
   &&(!earlyOnly||j.s===0)
   &&(!q||(j.t+" "+j.c+" "+j.l).toLowerCase().includes(q)));
  document.getElementById("feed").innerHTML=hit.slice(0,limit).map(j=>
-  `<a class="card" href="${esc(j.u)}" target="_blank" rel="noopener">
+  `<a class="card" href="${esc(safeUrl(j.u))}" target="_blank"
+    rel="noopener noreferrer" referrerpolicy="no-referrer">
    <div class="card-top"><span class="company">${esc(j.c)}</span>
-   <span class="tags">${j.s===0?'<span class="tag early">早期友好</span>':""}
+   <span class="tags">${j.s===0?'<span class="tag early">早期标题信号</span>':""}
    <span class="tag ${trackColor[j.k]}">${esc(j.k)}</span></span></div>
    <div class="title">${esc(j.t)}${j.f===M.updated?' <span class="dot"></span>':""}</div>
-   <div class="meta">${esc(j.l)||"地点未标注"} · 首见 ${j.f}</div></a>`).join("");
+   <div class="meta">${esc(j.l)||"地点未标注"} · 首见 ${esc(j.f)}</div></a>`).join("");
  document.getElementById("empty").style.display=hit.length?"none":"block";
  document.getElementById("more").style.display=hit.length>limit?"block":"none";
 }

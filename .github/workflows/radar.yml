@@ -3,8 +3,18 @@ on:
   schedule:
     - cron: "30 23 * * *"   # UTC 23:30 = 北京 07:30
   workflow_dispatch: {}      # 也可手动冲洗一版
+
 permissions:
   contents: write
+
+env:
+  RADAR_TIMEZONE: Asia/Shanghai
+  TZ: Asia/Shanghai
+
+concurrency:
+  group: radar-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   develop:
     runs-on: ubuntu-latest
@@ -12,13 +22,21 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
+      - name: 验证
+        run: |
+          python -m py_compile radar.py job_facts.py import_jobs.py
+          python -m unittest discover -s tests
+          node --test tests/test_local_filter_core.js
+          node --check docs/import-app.js
       - name: 冲洗
-        run: python radar.py
+        run: |
+          python radar.py
+          node --check docs/jobs.normalized.js
       - name: 定影
         run: |
-          git config user.name "ciel-radar"
-          git config user.email "ciel-radar@users.noreply.github.com"
+          git config user.name "job-radar-bot"
+          git config user.email "job-radar-bot@users.noreply.github.com"
           git add data/ docs/
           git diff --cached --quiet && echo "今日无新影像" && exit 0
-          git commit -m "显影 $(date -u +%F)"
+          git commit -m "显影 $(date +%F)"
           git push
