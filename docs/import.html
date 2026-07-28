@@ -26,12 +26,12 @@
         <h1 id="page-title">本地职位筛选</h1>
         <p class="hero-copy">
           载入每日公开职位，或手动整理 BOSS 直聘与 LinkedIn 职位，再按自己的
-          地点、经验和工作方式筛选。所有判断都在当前浏览器标签页内完成。
+          关注方向、地点、经验和工作方式筛选。职位数据与判断都在当前浏览器内完成。
         </p>
         <div class="privacy-strip" role="group" aria-label="隐私保证">
           <span>不上传</span>
           <span>不登录</span>
-          <span>不保存</span>
+          <span>默认不保存</span>
           <span>不自动投递</span>
         </div>
       </section>
@@ -233,9 +233,61 @@
             <span class="step">02</span>
             <div>
               <h2 id="preference-title">设置筛选条件</h2>
-              <p>这些条件不会写入仓库或浏览器存储。</p>
+              <p>不会写入仓库；关注方向可由你选择是否保存在本设备。</p>
             </div>
           </div>
+
+          <section class="focus-manager" aria-labelledby="focus-title">
+            <div class="focus-heading">
+              <div>
+                <h3 id="focus-title">我的关注方向</h3>
+                <p>用明确的匹配词筛选本地视图，不改变 A/B/C/X 判断。</p>
+              </div>
+            </div>
+
+            <form id="focus-form" class="focus-form" novalidate>
+              <label>
+                <span>方向名称</span>
+                <input
+                  id="focus-name"
+                  type="text"
+                  maxlength="60"
+                  placeholder="例如：插画／平面设计"
+                  autocomplete="off"
+                  required
+                >
+              </label>
+              <label>
+                <span>匹配词</span>
+                <input
+                  id="focus-keywords"
+                  type="text"
+                  maxlength="500"
+                  placeholder="例如：插画, illustrator, graphic design"
+                  autocomplete="off"
+                  required
+                >
+              </label>
+              <p class="field-note">使用逗号或换行分隔；最多 20 个匹配词。</p>
+              <div id="focus-error" class="message error" role="alert" hidden></div>
+              <button class="secondary-button focus-add-button" type="submit">
+                添加方向
+              </button>
+            </form>
+
+            <div id="focus-list" class="focus-list"></div>
+            <p id="focus-empty" class="focus-empty">
+              还没有个人关注方向；当前会显示所有职位。
+            </p>
+
+            <label class="check focus-save">
+              <input id="remember-focus" type="checkbox">
+              <span>仅将关注方向保存在这台设备</span>
+            </label>
+            <p id="focus-storage-note" class="field-note">
+              不会保存职位、JD、筛选结果或私人备注。
+            </p>
+          </section>
 
           <button id="beijing-preset" class="preset-button" type="button">
             套用：北京线下／中国可远程
@@ -366,14 +418,16 @@
         <div id="status-message" class="message" role="status" aria-live="polite" hidden></div>
         <div id="result-list" class="result-list"></div>
         <div id="empty-state" class="empty-state">
-          <p>职位会在这里显影。</p>
-          <span>先载入每日公开职位、选择本地 JSON，或手动添加一个职位。</span>
+          <p id="empty-title">职位会在这里显影。</p>
+          <span id="empty-copy">先载入每日公开职位、选择本地 JSON，或手动添加一个职位。</span>
         </div>
       </section>
     </main>
 
     <footer>
-      <p>数据仅停留在当前标签页；刷新或关闭后即消失。</p>
+      <p>
+        职位数据仅停留在当前标签页；只有关注方向可在你主动勾选后保存在本设备。
+      </p>
     </footer>
   </body>
 </html>
