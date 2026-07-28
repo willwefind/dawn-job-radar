@@ -52,7 +52,7 @@
       "id": "boss",
       "label": "BOSS直聘",
       "mode": "assisted",
-      "status": "planned",
+      "status": "available",
       "input_methods": [
         "manual_entry",
         "local_file_import",
@@ -75,7 +75,7 @@
       "id": "linkedin",
       "label": "LinkedIn",
       "mode": "assisted",
-      "status": "planned",
+      "status": "available",
       "input_methods": [
         "manual_entry",
         "local_file_import",

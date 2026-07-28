@@ -9,8 +9,11 @@
   const MAX_FILE_BYTES = 5_000_000;
   const MAX_JOBS = 500;
   const MAX_PUBLIC_JOBS = 1_000;
+  const FOCUS_STORAGE_KEY = "job-radar.focus-directions.v1";
   const jobsById = new Map();
   let publicSnapshot = null;
+  let focusDirections = [];
+  let focusSequence = 0;
 
   const elements = {
     form: document.getElementById("job-form"),
@@ -25,6 +28,14 @@
     allowedCountriesField: document.getElementById("allowed-countries-field"),
     allowedRegionsField: document.getElementById("allowed-regions-field"),
     preset: document.getElementById("beijing-preset"),
+    focusForm: document.getElementById("focus-form"),
+    focusName: document.getElementById("focus-name"),
+    focusKeywords: document.getElementById("focus-keywords"),
+    focusError: document.getElementById("focus-error"),
+    focusList: document.getElementById("focus-list"),
+    focusEmpty: document.getElementById("focus-empty"),
+    rememberFocus: document.getElementById("remember-focus"),
+    focusStorageNote: document.getElementById("focus-storage-note"),
     cities: document.getElementById("pref-cities"),
     country: document.getElementById("pref-country"),
     preferredExperience: document.getElementById("pref-experience"),
@@ -37,6 +48,8 @@
     status: document.getElementById("status-message"),
     list: document.getElementById("result-list"),
     empty: document.getElementById("empty-state"),
+    emptyTitle: document.getElementById("empty-title"),
+    emptyCopy: document.getElementById("empty-copy"),
     download: document.getElementById("download-jobs"),
     clear: document.getElementById("clear-jobs"),
     counts: {
@@ -63,6 +76,185 @@
     element.textContent = message;
     element.classList.toggle("error", isError === true);
     element.hidden = !message;
+  }
+
+  function nextFocusId() {
+    focusSequence += 1;
+    return `focus-${Date.now().toString(36)}-${focusSequence.toString(36)}`;
+  }
+
+  function focusPayload() {
+    return focusDirections.map((direction) => ({
+      id: direction.id,
+      name: direction.name,
+      keywords: Array.from(direction.keywords),
+      active: direction.active,
+    }));
+  }
+
+  function saveFocusDirections() {
+    if (!elements.rememberFocus.checked) return;
+    try {
+      localStorage.setItem(FOCUS_STORAGE_KEY, JSON.stringify(focusPayload()));
+      elements.focusStorageNote.textContent =
+        "只保存了关注方向的名称、匹配词和启用状态。";
+    } catch {
+      elements.rememberFocus.checked = false;
+      elements.rememberFocus.disabled = true;
+      elements.focusStorageNote.textContent =
+        "当前浏览器不允许本地保存；关注方向仍可在本次使用中生效。";
+    }
+  }
+
+  function removeStoredFocusDirections() {
+    try {
+      localStorage.removeItem(FOCUS_STORAGE_KEY);
+      elements.focusStorageNote.textContent =
+        "不会保存职位、JD、筛选结果或私人备注。";
+    } catch {
+      elements.focusStorageNote.textContent =
+        "无法访问本地存储；当前关注方向仍只在本次使用中生效。";
+    }
+  }
+
+  function loadStoredFocusDirections() {
+    try {
+      const stored = localStorage.getItem(FOCUS_STORAGE_KEY);
+      if (!stored) return;
+      focusDirections = Array.from(
+        core.normalizeFocusDirections(JSON.parse(stored)),
+      );
+      elements.rememberFocus.checked = true;
+      elements.focusStorageNote.textContent =
+        "已载入保存在这台设备上的关注方向。";
+    } catch {
+      focusDirections = [];
+      removeStoredFocusDirections();
+      elements.focusStorageNote.textContent =
+        "已忽略无法识别的本地关注方向数据。";
+    }
+  }
+
+  function replaceFocusDirection(id, fields) {
+    const index = focusDirections.findIndex((direction) => direction.id === id);
+    if (index < 0) return;
+    const current = focusDirections[index];
+    const updated = core.normalizeFocusDirection({
+      id: current.id,
+      name: fields.name ?? current.name,
+      keywords: fields.keywords ?? Array.from(current.keywords),
+      active: fields.active ?? current.active,
+    });
+    focusDirections = [
+      ...focusDirections.slice(0, index),
+      updated,
+      ...focusDirections.slice(index + 1),
+    ];
+    saveFocusDirections();
+    renderFocusDirections();
+    render();
+  }
+
+  function renderFocusDirections() {
+    elements.focusList.replaceChildren();
+    elements.focusEmpty.hidden = focusDirections.length > 0;
+
+    for (const direction of focusDirections) {
+      const row = document.createElement("div");
+      row.className = "focus-row";
+
+      const main = document.createElement("div");
+      main.className = "focus-row-main";
+
+      const active = document.createElement("input");
+      active.className = "focus-active";
+      active.type = "checkbox";
+      active.checked = direction.active;
+      active.setAttribute("aria-label", `启用关注方向：${direction.name}`);
+      active.addEventListener("change", () => {
+        replaceFocusDirection(direction.id, { active: active.checked });
+      });
+
+      const name = document.createElement("input");
+      name.className = "focus-row-name";
+      name.type = "text";
+      name.maxLength = 60;
+      name.value = direction.name;
+      name.setAttribute("aria-label", "关注方向名称");
+
+      const remove = document.createElement("button");
+      remove.className = "focus-delete";
+      remove.type = "button";
+      remove.textContent = "删除";
+      remove.setAttribute("aria-label", `删除关注方向：${direction.name}`);
+      remove.addEventListener("click", () => {
+        focusDirections = focusDirections.filter(
+          (item) => item.id !== direction.id,
+        );
+        saveFocusDirections();
+        setMessage(elements.focusError, "");
+        renderFocusDirections();
+        render();
+      });
+
+      const keywords = document.createElement("input");
+      keywords.className = "focus-row-keywords";
+      keywords.type = "text";
+      keywords.maxLength = 500;
+      keywords.value = direction.keywords.join(", ");
+      keywords.setAttribute("aria-label", `${direction.name}的匹配词`);
+
+      const applyEdits = () => {
+        try {
+          replaceFocusDirection(direction.id, {
+            name: name.value,
+            keywords: splitList(keywords.value),
+          });
+          setMessage(elements.focusError, "");
+        } catch (error) {
+          setMessage(elements.focusError, error.message, true);
+          renderFocusDirections();
+        }
+      };
+      name.addEventListener("change", applyEdits);
+      keywords.addEventListener("change", applyEdits);
+
+      main.append(active, name, remove);
+      row.append(main, keywords);
+      elements.focusList.appendChild(row);
+    }
+  }
+
+  function addFocusDirection(event) {
+    event.preventDefault();
+    setMessage(elements.focusError, "");
+    try {
+      const direction = core.normalizeFocusDirection({
+        id: nextFocusId(),
+        name: elements.focusName.value,
+        keywords: splitList(elements.focusKeywords.value),
+        active: true,
+      });
+      focusDirections = Array.from(
+        core.normalizeFocusDirections([...focusDirections, direction]),
+      );
+      elements.focusForm.reset();
+      saveFocusDirections();
+      renderFocusDirections();
+      render();
+    } catch (error) {
+      setMessage(elements.focusError, error.message, true);
+    }
+  }
+
+  function toggleFocusStorage() {
+    if (elements.rememberFocus.checked) {
+      saveFocusDirections();
+      setMessage(elements.status, "关注方向已保存在这台设备上。");
+    } else {
+      removeStoredFocusDirections();
+      setMessage(elements.status, "已停止本地保存；当前方向仍保留到页面关闭。");
+    }
   }
 
   function updateRemoteFields() {
@@ -221,6 +413,16 @@
     meta.className = "result-meta";
     meta.textContent = `${job.location.raw} · ${job.work_arrangement} · ${job.source.platform}`;
 
+    const matches = core.matchingFocusDirections(job, focusDirections);
+    const focusMatches = document.createElement("div");
+    focusMatches.className = "focus-match-list";
+    for (const direction of matches) {
+      const tag = document.createElement("span");
+      tag.className = "focus-match";
+      tag.textContent = direction.name;
+      focusMatches.appendChild(tag);
+    }
+
     const reasons = document.createElement("ul");
     reasons.className = "result-reasons";
     for (const reason of result.reasons) {
@@ -237,7 +439,9 @@
     link.referrerPolicy = "no-referrer";
     link.textContent = "打开官方职位页面 ↗";
 
-    article.append(head, meta, reasons, link);
+    article.append(head, meta);
+    if (matches.length) article.appendChild(focusMatches);
+    article.append(reasons, link);
     return article;
   }
 
@@ -252,7 +456,8 @@
     }
 
     const jobs = Array.from(jobsById.values());
-    const evaluation = core.evaluateJobs(jobs, preferences);
+    const focusedJobs = core.filterJobsByFocus(jobs, focusDirections);
+    const evaluation = core.evaluateJobs(focusedJobs, preferences);
     for (const outcome of ["A", "B", "C", "X", "invalid"]) {
       elements.counts[outcome].textContent = evaluation.summary[outcome];
     }
@@ -272,10 +477,25 @@
     }
 
     const count = jobs.length;
+    const activeFocusCount = focusDirections.filter(
+      (direction) => direction.active,
+    ).length;
     elements.sessionNote.textContent = count
-      ? `当前标签页有 ${count} 个职位；刷新或关闭后即消失。`
+      ? activeFocusCount
+        ? `当前标签页有 ${count} 个职位；关注方向匹配 ${focusedJobs.length} 个。`
+        : `当前标签页有 ${count} 个职位；刷新或关闭后即消失。`
       : "当前标签页还没有职位。";
-    elements.empty.hidden = count > 0;
+    elements.empty.hidden = visible.length > 0;
+    if (count === 0) {
+      elements.emptyTitle.textContent = "职位会在这里显影。";
+      elements.emptyCopy.textContent =
+        "先载入每日公开职位、选择本地 JSON，或手动添加一个职位。";
+    } else {
+      elements.emptyTitle.textContent = "当前视图没有可显示的职位。";
+      elements.emptyCopy.textContent = activeFocusCount
+        ? "可以停用或修改关注方向，也可以调整筛选条件。"
+        : "可以调整筛选条件，或选择显示存在明确冲突的 X 类岗位。";
+    }
     elements.download.disabled = count === 0;
     elements.clear.disabled = count === 0;
   }
@@ -389,6 +609,8 @@
   });
 
   elements.file.addEventListener("change", handleFile);
+  elements.focusForm.addEventListener("submit", addFocusDirection);
+  elements.rememberFocus.addEventListener("change", toggleFocusStorage);
   elements.loadPublicJobs.addEventListener("click", loadPublicJobs);
   elements.workArrangement.addEventListener("change", updateRemoteFields);
   elements.remoteScope.addEventListener("change", updateRemoteFields);
@@ -409,6 +631,8 @@
   elements.cities.addEventListener("input", render);
   elements.country.addEventListener("input", render);
 
+  loadStoredFocusDirections();
+  renderFocusDirections();
   configurePublicSnapshot();
   updateRemoteFields();
   render();
