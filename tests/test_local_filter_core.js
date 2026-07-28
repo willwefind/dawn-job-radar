@@ -262,6 +262,110 @@ test("rejects malformed or oversized public snapshots", () => {
   );
 });
 
+test("normalizes bounded personal focus directions", () => {
+  const directions = filter.normalizeFocusDirections([
+    {
+      id: "illustration",
+      name: "插画／平面设计",
+      keywords: ["Illustrator", "illustrator", "平面设计"],
+      active: true,
+    },
+  ]);
+  assert.equal(directions.length, 1);
+  assert.deepEqual(directions[0].keywords, ["Illustrator", "平面设计"]);
+  assert.equal(directions[0].active, true);
+
+  assert.throws(
+    () =>
+      filter.normalizeFocusDirection({
+        id: "empty",
+        name: "空方向",
+        keywords: [],
+      }),
+    /needs 1 to 20 keywords/,
+  );
+  assert.throws(
+    () =>
+      filter.normalizeFocusDirections(
+        Array.from({ length: 31 }, (_value, index) => ({
+          id: `focus-${index}`,
+          name: `Direction ${index}`,
+          keywords: [`keyword-${index}`],
+        })),
+      ),
+    /cannot exceed 30/,
+  );
+});
+
+test("matches focus directions against transparent job fields", () => {
+  const job = makeJob({
+    title: "Junior Visual Artist",
+    company: { id: "pet-studio", name: "Pet Story Studio" },
+    summary: "Create flat illustration assets.",
+  });
+  const directions = [
+    {
+      id: "illustration",
+      name: "插画",
+      keywords: ["illustration"],
+      active: true,
+    },
+    {
+      id: "pets",
+      name: "宠物内容",
+      keywords: ["pet story"],
+      active: true,
+    },
+    {
+      id: "engineering",
+      name: "工程",
+      keywords: ["backend"],
+      active: true,
+    },
+  ];
+  assert.deepEqual(
+    filter
+      .matchingFocusDirections(job, directions)
+      .map((direction) => direction.id),
+    ["illustration", "pets"],
+  );
+});
+
+test("focus directions filter the local view without changing job outcomes", () => {
+  const jobs = [
+    makeJob({ id: "boss:illustration", title: "插画助理" }),
+    makeJob({
+      id: "boss:operations",
+      title: "运营助理",
+      summary: "协助安排项目进度。",
+      classification: {
+        role_families: ["operations"],
+        seniority: "junior",
+        people_management: "not_required",
+      },
+    }),
+  ];
+  const active = [
+    {
+      id: "illustration",
+      name: "插画",
+      keywords: ["插画"],
+      active: true,
+    },
+  ];
+  assert.deepEqual(
+    filter.filterJobsByFocus(jobs, active).map((job) => job.id),
+    ["boss:illustration"],
+  );
+  assert.deepEqual(
+    filter
+      .filterJobsByFocus(jobs, [{ ...active[0], active: false }])
+      .map((job) => job.id),
+    ["boss:illustration", "boss:operations"],
+  );
+  assert.equal(filter.evaluateJob(jobs[0], {}).outcome, "A");
+});
+
 test("allows an explicitly matching Beijing onsite job", () => {
   const result = filter.evaluateJob(makeJob(), filter.getPreset("beijing-cn"));
   assert.equal(result.valid, true);
