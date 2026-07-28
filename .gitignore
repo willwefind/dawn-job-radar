@@ -1,0 +1,54 @@
+# Secrets and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.*
+secrets.*
+
+# Private career data
+/private/
+/local/
+/vault/
+/data/private/
+/data/inbox/
+/data/shortlists/
+/applications/
+/reports/
+/output/
+
+profile.private.*
+resume.private.*
+experience-bank.private.*
+shortlist*.json
+
+# Personal documents accidentally placed at repository root
+*resume*.pdf
+*resume*.docx
+*cv*.pdf
+*cv*.docx
+*简历*.pdf
+*简历*.docx
+*身份证*
+*护照*
+*成绩单*
+*学位证*
+*毕业证*
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Local agent and editor state
+.claude/settings.local.json
+.codex/settings.local.json
+.vscode/
+.idea/
+
+# Operating systems
+.DS_Store
+Thumbs.db
