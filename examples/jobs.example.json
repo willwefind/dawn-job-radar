@@ -1,0 +1,270 @@
+[
+  {
+    "schema_version": 1,
+    "id": "greenhouse:example-studio:jr-1001",
+    "source": {
+      "platform": "greenhouse",
+      "mode": "automatic",
+      "source_job_id": "jr-1001",
+      "url": "https://jobs.example.com/example-studio/jr-1001"
+    },
+    "title": "Junior Visual Content Coordinator",
+    "company": {
+      "id": "example-studio",
+      "name": "Example Studio"
+    },
+    "location": {
+      "raw": "Beijing, China",
+      "places": [
+        {
+          "city": "Beijing",
+          "region": "Beijing",
+          "country_code": "CN"
+        }
+      ]
+    },
+    "work_arrangement": "onsite",
+    "remote_eligibility": {
+      "scope": "not_applicable",
+      "allowed_countries": [],
+      "allowed_regions": []
+    },
+    "employment_type": "full_time",
+    "compensation": {
+      "disclosed": false,
+      "currency": null,
+      "amount_min": null,
+      "amount_max": null,
+      "period": "unknown",
+      "annual_pay_periods": null
+    },
+    "experience": {
+      "min_years": 0,
+      "max_years": 1,
+      "explicit": true
+    },
+    "requirements": {
+      "portfolio": "preferred"
+    },
+    "classification": {
+      "role_families": [
+        "visual-content",
+        "illustration"
+      ],
+      "seniority": "entry",
+      "people_management": "not_required"
+    },
+    "summary": "Supports visual content production and coordination for a Beijing-based creative team.",
+    "dates": {
+      "published_on": "2026-07-26",
+      "first_seen_on": "2026-07-28",
+      "captured_at": "2026-07-28T08:00:00+08:00"
+    },
+    "provenance": {
+      "capture_method": "public_endpoint",
+      "evidence": [
+        {
+          "field": "experience",
+          "summary": "The posting explicitly accepts candidates with zero to one year of experience.",
+          "source_url": "https://jobs.example.com/example-studio/jr-1001",
+          "observed_at": "2026-07-28T08:00:00+08:00"
+        },
+        {
+          "field": "location",
+          "summary": "The posting lists Beijing as the work location.",
+          "source_url": "https://jobs.example.com/example-studio/jr-1001",
+          "observed_at": "2026-07-28T08:00:00+08:00"
+        },
+        {
+          "field": "requirements.portfolio",
+          "summary": "The posting describes a portfolio as preferred rather than required.",
+          "source_url": "https://jobs.example.com/example-studio/jr-1001",
+          "observed_at": "2026-07-28T08:00:00+08:00"
+        }
+      ]
+    },
+    "privacy": {
+      "visibility": "public_metadata",
+      "raw_description": "not_stored",
+      "contains_candidate_data": false
+    }
+  },
+  {
+    "schema_version": 1,
+    "id": "boss:manual:example-2001",
+    "source": {
+      "platform": "boss",
+      "mode": "assisted",
+      "source_job_id": null,
+      "url": "https://www.zhipin.com/job_detail/example-2001.html"
+    },
+    "title": "平面插画助理",
+    "company": {
+      "id": null,
+      "name": "示例文化工作室"
+    },
+    "location": {
+      "raw": "北京·朝阳区",
+      "places": [
+        {
+          "city": "Beijing",
+          "region": "Beijing",
+          "country_code": "CN"
+        }
+      ]
+    },
+    "work_arrangement": "hybrid",
+    "remote_eligibility": {
+      "scope": "limited",
+      "allowed_countries": [
+        "CN"
+      ],
+      "allowed_regions": []
+    },
+    "employment_type": "full_time",
+    "compensation": {
+      "disclosed": true,
+      "currency": "CNY",
+      "amount_min": 8000,
+      "amount_max": 12000,
+      "period": "month",
+      "annual_pay_periods": 13
+    },
+    "experience": {
+      "min_years": null,
+      "max_years": null,
+      "explicit": false
+    },
+    "requirements": {
+      "portfolio": "required"
+    },
+    "classification": {
+      "role_families": [
+        "illustration",
+        "graphic-design"
+      ],
+      "seniority": "junior",
+      "people_management": "not_required"
+    },
+    "summary": "Assists with flat illustration and everyday visual asset production.",
+    "dates": {
+      "published_on": null,
+      "first_seen_on": "2026-07-28",
+      "captured_at": "2026-07-28T09:10:00+08:00"
+    },
+    "provenance": {
+      "capture_method": "manual_entry",
+      "evidence": [
+        {
+          "field": "work_arrangement",
+          "summary": "The user-entered listing information describes a Beijing hybrid role.",
+          "source_url": "https://www.zhipin.com/job_detail/example-2001.html",
+          "observed_at": "2026-07-28T09:10:00+08:00"
+        },
+        {
+          "field": "experience",
+          "summary": "No explicit number of required experience years was entered.",
+          "source_url": "https://www.zhipin.com/job_detail/example-2001.html",
+          "observed_at": "2026-07-28T09:10:00+08:00"
+        },
+        {
+          "field": "compensation",
+          "summary": "The user-entered listing information states CNY 8,000–12,000 per month with 13 salary payments.",
+          "source_url": "https://www.zhipin.com/job_detail/example-2001.html",
+          "observed_at": "2026-07-28T09:10:00+08:00"
+        },
+        {
+          "field": "requirements.portfolio",
+          "summary": "The user-entered listing information states that a portfolio is required.",
+          "source_url": "https://www.zhipin.com/job_detail/example-2001.html",
+          "observed_at": "2026-07-28T09:10:00+08:00"
+        }
+      ]
+    },
+    "privacy": {
+      "visibility": "local_only",
+      "raw_description": "local_only",
+      "contains_candidate_data": false
+    }
+  },
+  {
+    "schema_version": 1,
+    "id": "linkedin:alert:example-3001",
+    "source": {
+      "platform": "linkedin",
+      "mode": "assisted",
+      "source_job_id": "example-3001",
+      "url": "https://www.linkedin.com/jobs/view/example-3001/"
+    },
+    "title": "Junior Community Illustrator",
+    "company": {
+      "id": "example-community",
+      "name": "Example Community"
+    },
+    "location": {
+      "raw": "Remote — China",
+      "places": []
+    },
+    "work_arrangement": "remote",
+    "remote_eligibility": {
+      "scope": "limited",
+      "allowed_countries": [
+        "CN"
+      ],
+      "allowed_regions": []
+    },
+    "employment_type": "contract",
+    "compensation": {
+      "disclosed": false,
+      "currency": null,
+      "amount_min": null,
+      "amount_max": null,
+      "period": "unknown",
+      "annual_pay_periods": null
+    },
+    "experience": {
+      "min_years": null,
+      "max_years": null,
+      "explicit": false
+    },
+    "requirements": {
+      "portfolio": "required"
+    },
+    "classification": {
+      "role_families": [
+        "illustration",
+        "community-content"
+      ],
+      "seniority": "junior",
+      "people_management": "unknown"
+    },
+    "summary": "Creates lightweight illustration assets for an online community.",
+    "dates": {
+      "published_on": "2026-07-27",
+      "first_seen_on": "2026-07-28",
+      "captured_at": "2026-07-28T10:20:00+08:00"
+    },
+    "provenance": {
+      "capture_method": "user_received_job_alert",
+      "evidence": [
+        {
+          "field": "remote_eligibility",
+          "summary": "The received job alert identifies the role as remote within China.",
+          "source_url": "https://www.linkedin.com/jobs/view/example-3001/",
+          "observed_at": "2026-07-28T10:20:00+08:00"
+        },
+        {
+          "field": "requirements.portfolio",
+          "summary": "The received job alert states that a portfolio is required.",
+          "source_url": "https://www.linkedin.com/jobs/view/example-3001/",
+          "observed_at": "2026-07-28T10:20:00+08:00"
+        }
+      ]
+    },
+    "privacy": {
+      "visibility": "local_only",
+      "raw_description": "not_stored",
+      "contains_candidate_data": false
+    }
+  }
+]

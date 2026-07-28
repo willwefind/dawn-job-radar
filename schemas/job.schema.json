@@ -1,0 +1,732 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Job Radar normalized job",
+  "description": "A privacy-conscious, source-neutral job record. Candidate profiles and application history are intentionally out of scope.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "source",
+    "title",
+    "company",
+    "location",
+    "work_arrangement",
+    "remote_eligibility",
+    "employment_type",
+    "compensation",
+    "experience",
+    "requirements",
+    "classification",
+    "dates",
+    "provenance",
+    "privacy"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 128,
+      "pattern": "^[a-z0-9][a-z0-9._:-]+$",
+      "description": "A stable identifier that must not contain personal candidate data."
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "platform",
+        "mode",
+        "source_job_id",
+        "url"
+      ],
+      "properties": {
+        "platform": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 40,
+          "pattern": "^[a-z0-9][a-z0-9_-]+$",
+          "description": "Examples: greenhouse, smartrecruiters, workday, boss, linkedin, manual."
+        },
+        "mode": {
+          "enum": [
+            "automatic",
+            "assisted",
+            "manual"
+          ]
+        },
+        "source_job_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 200
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://",
+          "maxLength": 2000
+        }
+      }
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 300
+    },
+    "company": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 100,
+          "pattern": "^[a-z0-9][a-z0-9_-]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
+    },
+    "location": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "raw",
+        "places"
+      ],
+      "properties": {
+        "raw": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "The source location label, without candidate information."
+        },
+        "places": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "city",
+              "region",
+              "country_code"
+            ],
+            "properties": {
+              "city": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "maxLength": 120
+              },
+              "region": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "maxLength": 120
+              },
+              "country_code": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[A-Z]{2}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    "work_arrangement": {
+      "enum": [
+        "onsite",
+        "hybrid",
+        "remote",
+        "unknown"
+      ]
+    },
+    "remote_eligibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scope",
+        "allowed_countries",
+        "allowed_regions"
+      ],
+      "properties": {
+        "scope": {
+          "enum": [
+            "worldwide",
+            "limited",
+            "unknown",
+            "not_applicable"
+          ],
+          "description": "Use unknown unless the source explicitly provides enough information."
+        },
+        "allowed_countries": {
+          "type": "array",
+          "uniqueItems": true,
+          "maxItems": 250,
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Z]{2}$"
+          }
+        },
+        "allowed_regions": {
+          "type": "array",
+          "uniqueItems": true,
+          "maxItems": 30,
+          "items": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 80
+          }
+        }
+      }
+    },
+    "employment_type": {
+      "enum": [
+        "full_time",
+        "part_time",
+        "contract",
+        "temporary",
+        "internship",
+        "freelance",
+        "unknown"
+      ]
+    },
+    "compensation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "disclosed",
+        "currency",
+        "amount_min",
+        "amount_max",
+        "period",
+        "annual_pay_periods"
+      ],
+      "properties": {
+        "disclosed": {
+          "type": "boolean"
+        },
+        "currency": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[A-Z]{3}$",
+          "description": "ISO 4217 currency code, such as CNY, USD or AUD."
+        },
+        "amount_min": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "amount_max": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "period": {
+          "enum": [
+            "hour",
+            "day",
+            "week",
+            "month",
+            "year",
+            "project",
+            "unknown"
+          ]
+        },
+        "annual_pay_periods": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 24,
+          "description": "Optional number of salary payments per year, useful for listings such as 13薪."
+        }
+      }
+    },
+    "experience": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "min_years",
+        "max_years",
+        "explicit"
+      ],
+      "properties": {
+        "min_years": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 60
+        },
+        "max_years": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 60
+        },
+        "explicit": {
+          "type": "boolean",
+          "description": "True only when the source states an experience range or minimum."
+        }
+      }
+    },
+    "requirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "portfolio"
+      ],
+      "properties": {
+        "portfolio": {
+          "enum": [
+            "required",
+            "preferred",
+            "not_mentioned",
+            "unknown"
+          ],
+          "description": "Whether the source explicitly requires or prefers a portfolio."
+        }
+      }
+    },
+    "classification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "role_families",
+        "seniority",
+        "people_management"
+      ],
+      "properties": {
+        "role_families": {
+          "type": "array",
+          "uniqueItems": true,
+          "maxItems": 20,
+          "items": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 80,
+            "pattern": "^[a-z0-9][a-z0-9_-]+$"
+          }
+        },
+        "seniority": {
+          "enum": [
+            "entry",
+            "junior",
+            "mid",
+            "senior",
+            "leadership",
+            "unknown"
+          ]
+        },
+        "people_management": {
+          "enum": [
+            "required",
+            "not_required",
+            "unknown"
+          ]
+        }
+      }
+    },
+    "summary": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 600,
+      "description": "An optional short factual summary, never a full copied job description."
+    },
+    "dates": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "published_on",
+        "first_seen_on",
+        "captured_at"
+      ],
+      "properties": {
+        "published_on": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date"
+        },
+        "first_seen_on": {
+          "type": "string",
+          "format": "date"
+        },
+        "captured_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "capture_method",
+        "evidence"
+      ],
+      "properties": {
+        "capture_method": {
+          "enum": [
+            "public_endpoint",
+            "manual_entry",
+            "local_file",
+            "user_received_job_alert"
+          ]
+        },
+        "evidence": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "field",
+              "summary",
+              "source_url",
+              "observed_at"
+            ],
+            "properties": {
+              "field": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120
+              },
+              "summary": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500,
+                "description": "A short factual paraphrase, not a long quotation."
+              },
+              "source_url": {
+                "type": "string",
+                "format": "uri",
+                "pattern": "^https://",
+                "maxLength": 2000
+              },
+              "observed_at": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          }
+        }
+      }
+    },
+    "privacy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "visibility",
+        "raw_description",
+        "contains_candidate_data"
+      ],
+      "properties": {
+        "visibility": {
+          "enum": [
+            "public_metadata",
+            "local_only"
+          ]
+        },
+        "raw_description": {
+          "enum": [
+            "not_stored",
+            "local_only"
+          ]
+        },
+        "contains_candidate_data": {
+          "const": false
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "compensation": {
+            "type": "object",
+            "properties": {
+              "disclosed": {
+                "const": false
+              }
+            },
+            "required": [
+              "disclosed"
+            ]
+          }
+        },
+        "required": [
+          "compensation"
+        ]
+      },
+      "then": {
+        "properties": {
+          "compensation": {
+            "type": "object",
+            "properties": {
+              "currency": {
+                "const": null
+              },
+              "amount_min": {
+                "const": null
+              },
+              "amount_max": {
+                "const": null
+              },
+              "period": {
+                "const": "unknown"
+              },
+              "annual_pay_periods": {
+                "const": null
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "compensation": {
+            "type": "object",
+            "properties": {
+              "disclosed": {
+                "const": true
+              }
+            },
+            "required": [
+              "disclosed"
+            ]
+          }
+        },
+        "required": [
+          "compensation"
+        ]
+      },
+      "then": {
+        "properties": {
+          "compensation": {
+            "type": "object",
+            "required": [
+              "currency"
+            ],
+            "properties": {
+              "currency": {
+                "type": "string"
+              },
+              "period": {
+                "not": {
+                  "const": "unknown"
+                }
+              }
+            },
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "amount_min": {
+                    "type": "number"
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "amount_max": {
+                    "type": "number"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "source": {
+            "type": "object",
+            "properties": {
+              "platform": {
+                "enum": [
+                  "boss",
+                  "linkedin"
+                ]
+              }
+            },
+            "required": [
+              "platform"
+            ]
+          }
+        },
+        "required": [
+          "source"
+        ]
+      },
+      "then": {
+        "properties": {
+          "source": {
+            "type": "object",
+            "properties": {
+              "mode": {
+                "const": "assisted"
+              }
+            }
+          },
+          "privacy": {
+            "type": "object",
+            "properties": {
+              "visibility": {
+                "const": "local_only"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "privacy": {
+            "type": "object",
+            "properties": {
+              "visibility": {
+                "const": "public_metadata"
+              }
+            },
+            "required": [
+              "visibility"
+            ]
+          }
+        },
+        "required": [
+          "privacy"
+        ]
+      },
+      "then": {
+        "properties": {
+          "privacy": {
+            "type": "object",
+            "properties": {
+              "raw_description": {
+                "const": "not_stored"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "work_arrangement": {
+            "const": "onsite"
+          }
+        },
+        "required": [
+          "work_arrangement"
+        ]
+      },
+      "then": {
+        "properties": {
+          "remote_eligibility": {
+            "type": "object",
+            "properties": {
+              "scope": {
+                "const": "not_applicable"
+              },
+              "allowed_countries": {
+                "type": "array",
+                "maxItems": 0
+              },
+              "allowed_regions": {
+                "type": "array",
+                "maxItems": 0
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "remote_eligibility": {
+            "type": "object",
+            "properties": {
+              "scope": {
+                "const": "limited"
+              }
+            },
+            "required": [
+              "scope"
+            ]
+          }
+        },
+        "required": [
+          "remote_eligibility"
+        ]
+      },
+      "then": {
+        "properties": {
+          "remote_eligibility": {
+            "type": "object",
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "allowed_countries": {
+                    "type": "array",
+                    "minItems": 1
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "allowed_regions": {
+                    "type": "array",
+                    "minItems": 1
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}
