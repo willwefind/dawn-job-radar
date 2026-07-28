@@ -29,6 +29,28 @@ def raw_job(**overrides):
     return job
 
 
+def raw_workday_job(**overrides):
+    job = {
+        "source_job_id": "JR1001",
+        "title": "Visual Design Coordinator",
+        "location": "China, Beijing",
+        "url": (
+            "https://example.wd5.myworkdayjobs.com/External/"
+            "job/China-Beijing/Visual-Design-Coordinator_JR1001"
+        ),
+        "description_html": (
+            "<p>1-2 years of visual design experience.</p>"
+        ),
+        "first_published": "2026-07-20",
+        "time_type": "Full time",
+        "remote_type": "On-site",
+        "country_codes": ["CN"],
+        "detail_status": "ok",
+    }
+    job.update(overrides)
+    return job
+
+
 class TextExtractionTests(unittest.TestCase):
     def test_extracts_text_without_retaining_markup(self):
         text = job_facts.html_to_text(
@@ -183,6 +205,76 @@ class GreenhouseNormalizationTests(unittest.TestCase):
             job["classification"]["people_management"], "unknown"
         )
         self.assertEqual(job["requirements"]["portfolio"], "not_mentioned")
+
+
+class WorkdayNormalizationTests(unittest.TestCase):
+    def normalize(self, **overrides):
+        return job_facts.normalize_workday_job(
+            COMPANY,
+            raw_workday_job(**overrides),
+            first_seen_on="2026-07-28",
+            observed_at=OBSERVED_AT,
+        )
+
+    def test_uses_explicit_workday_metadata(self):
+        job = self.normalize()
+        self.assertEqual(job["id"], "workday:example-studio:jr1001")
+        self.assertEqual(job["source"]["platform"], "workday")
+        self.assertEqual(job["work_arrangement"], "onsite")
+        self.assertEqual(job["employment_type"], "full_time")
+        self.assertEqual(
+            job["location"]["places"],
+            [
+                {
+                    "city": "Beijing",
+                    "region": "Beijing",
+                    "country_code": "CN",
+                }
+            ],
+        )
+        self.assertEqual(
+            job["experience"],
+            {"min_years": 1, "max_years": 2, "explicit": True},
+        )
+        self.assertEqual(job["dates"]["published_on"], "2026-07-20")
+
+    def test_remote_workday_country_is_limited_not_worldwide(self):
+        job = self.normalize(
+            location="Remote",
+            remote_type="Remote",
+            country_codes=["CN"],
+        )
+        self.assertEqual(job["work_arrangement"], "remote")
+        self.assertEqual(
+            job["remote_eligibility"],
+            {
+                "scope": "limited",
+                "allowed_countries": ["CN"],
+                "allowed_regions": [],
+            },
+        )
+
+    def test_never_serializes_workday_description(self):
+        marker = "private-contact@example.com"
+        job = self.normalize(
+            description_html=(
+                f"<p>{marker}</p>"
+                "<p>2+ years of visual design experience.</p>"
+            )
+        )
+        serialized = json.dumps(job)
+        self.assertNotIn(marker, serialized)
+        self.assertNotIn("description_html", serialized)
+
+    def test_unsafe_source_identifier_is_hashed_for_record_id(self):
+        job = self.normalize(source_job_id="Job Req / 1001")
+        self.assertRegex(
+            job["id"],
+            r"^workday:example-studio:[a-f0-9]{24}$",
+        )
+        self.assertEqual(
+            job["source"]["source_job_id"], "Job Req / 1001"
+        )
 
 
 if __name__ == "__main__":

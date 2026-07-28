@@ -74,6 +74,113 @@ class CollectionTests(unittest.TestCase):
             jobs[0]["description_html"], "<p>Public description.</p>"
         )
 
+    def test_workday_prefilters_before_requesting_details(self):
+        company = {
+            "id": "example",
+            "name": "Example",
+            "track": "Creative",
+            "ats": "workday",
+            "location_keywords": ["Beijing"],
+            "workday": {
+                "host": "example.wd5.myworkdayjobs.com",
+                "tenant": "example",
+                "site": "External",
+            },
+        }
+        listing = {
+            "total": 2,
+            "jobPostings": [
+                {
+                    "title": "Visual Designer",
+                    "locationsText": "China, Beijing",
+                    "externalPath": (
+                        "/job/China-Beijing/Visual-Designer_JR1001"
+                    ),
+                },
+                {
+                    "title": "Visual Designer",
+                    "locationsText": "China, Shanghai",
+                    "externalPath": (
+                        "/job/China-Shanghai/Visual-Designer_JR1002"
+                    ),
+                },
+            ],
+        }
+        detail = {
+            "jobPostingInfo": {
+                "canApply": True,
+                "jobReqId": "JR1001",
+                "title": "Visual Designer",
+                "location": "China, Beijing",
+                "externalUrl": (
+                    "https://example.wd5.myworkdayjobs.com/External/"
+                    "job/China-Beijing/Visual-Designer_JR1001"
+                ),
+                "jobDescription": "<p>1+ years of design experience.</p>",
+                "startDate": "2026-07-20",
+                "timeType": "Full time",
+                "remoteType": "On-site",
+                "jobRequisitionLocation": {
+                    "country": {"alpha2Code": "CN"}
+                },
+            }
+        }
+
+        def fake_http_json(url, payload=None, timeout=25):
+            if url.endswith("/jobs"):
+                return listing
+            return detail
+
+        with mock.patch.object(
+            radar, "http_json", side_effect=fake_http_json
+        ) as http_json:
+            jobs = radar.fetch_workday(company)
+
+        self.assertEqual(len(jobs), 1)
+        self.assertEqual(jobs[0]["source_job_id"], "JR1001")
+        self.assertEqual(jobs[0]["detail_status"], "ok")
+        self.assertEqual(jobs[0]["country_codes"], ["CN"])
+        self.assertEqual(http_json.call_count, 2)
+
+    def test_workday_detail_failure_degrades_to_public_summary(self):
+        company = {
+            "id": "example",
+            "name": "Example",
+            "track": "Creative",
+            "ats": "workday",
+            "workday": {
+                "host": "example.wd5.myworkdayjobs.com",
+                "tenant": "example",
+                "site": "External",
+            },
+        }
+        listing = {
+            "total": 1,
+            "jobPostings": [
+                {
+                    "title": "Visual Designer",
+                    "locationsText": "China, Beijing",
+                    "externalPath": (
+                        "/job/China-Beijing/Visual-Designer_JR1001"
+                    ),
+                }
+            ],
+        }
+
+        def fake_http_json(url, payload=None, timeout=25):
+            if url.endswith("/jobs"):
+                return listing
+            raise TimeoutError("detail unavailable")
+
+        with mock.patch.object(
+            radar, "http_json", side_effect=fake_http_json
+        ):
+            jobs = radar.fetch_workday(company)
+
+        self.assertEqual(len(jobs), 1)
+        self.assertEqual(jobs[0]["detail_status"], "unavailable")
+        self.assertEqual(jobs[0]["description_html"], "")
+
     def test_normalizes_only_public_job_fields(self):
         job = radar.normalize_fetched_job(
             {

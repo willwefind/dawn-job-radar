@@ -17,7 +17,7 @@ import shutil
 import urllib.parse
 import urllib.request
 
-from job_facts import normalize_greenhouse_job
+from job_facts import normalize_greenhouse_job, normalize_workday_job
 
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -146,6 +146,12 @@ def fetch_workday(company):
     output = []
     offset = 0
     total = None
+    detail_count = 0
+    try:
+        detail_limit = int(company.get("detail_limit", 60))
+    except (TypeError, ValueError):
+        detail_limit = 60
+    detail_limit = max(0, min(detail_limit, 100))
     while True:
         data = http_json(
             f"{base}/jobs",
@@ -159,18 +165,78 @@ def fetch_workday(company):
         total = data.get("total", 0) if total is None else total
         postings = data.get("jobPostings", [])
         for job in postings:
-            path = job.get("externalPath", "")
-            output.append(
-                {
-                    "title": job.get("title", ""),
-                    "location": job.get("locationsText", ""),
-                    "url": (
-                        f"https://{workday['host']}/{workday['site']}{path}"
-                        if path
-                        else ""
-                    ),
-                }
-            )
+            path = str(job.get("externalPath") or "")
+            summary = {
+                "title": job.get("title", ""),
+                "location": job.get("locationsText", ""),
+                "url": (
+                    f"https://{workday['host']}/{workday['site']}{path}"
+                    if path.startswith("/job/")
+                    else ""
+                ),
+            }
+            if not normalize_fetched_job(summary) or not keep(summary, company):
+                continue
+
+            source_fallback = hashlib.sha1(path.encode()).hexdigest()[:16]
+            enriched = {
+                **summary,
+                "source_job_id": source_fallback,
+                "description_html": "",
+                "first_published": None,
+                "time_type": None,
+                "remote_type": None,
+                "country_codes": [],
+                "detail_status": "limit",
+            }
+            if path.startswith("/job/") and detail_count < detail_limit:
+                detail_count += 1
+                try:
+                    detail = http_json(f"{base}{path}")
+                    posting = detail.get("jobPostingInfo") or {}
+                    if posting.get("canApply") is False:
+                        continue
+                    requisition_location = (
+                        posting.get("jobRequisitionLocation") or {}
+                    )
+                    country = requisition_location.get("country") or {}
+                    country_code = country.get("alpha2Code")
+                    country_codes = (
+                        [country_code]
+                        if isinstance(country_code, str)
+                        and len(country_code) == 2
+                        else []
+                    )
+                    enriched.update(
+                        {
+                            "source_job_id": (
+                                str(
+                                    posting.get("jobReqId")
+                                    or posting.get("jobPostingId")
+                                    or posting.get("id")
+                                    or source_fallback
+                                )
+                            ),
+                            "title": posting.get("title")
+                            or summary["title"],
+                            "location": posting.get("location")
+                            or requisition_location.get("descriptor")
+                            or summary["location"],
+                            "url": posting.get("externalUrl")
+                            or summary["url"],
+                            "description_html": posting.get(
+                                "jobDescription", ""
+                            ),
+                            "first_published": posting.get("startDate"),
+                            "time_type": posting.get("timeType"),
+                            "remote_type": posting.get("remoteType"),
+                            "country_codes": country_codes,
+                            "detail_status": "ok",
+                        }
+                    )
+                except Exception:
+                    enriched["detail_status"] = "unavailable"
+            output.append(enriched)
         offset += len(postings)
         if not postings or offset >= min(total, 200):
             break
@@ -358,6 +424,7 @@ def main():
     normalized_jobs = []
     errors = []
     normalization_skipped = 0
+    detail_degraded = 0
     observed_at = _captured_at()
     for company in config["companies"]:
         if company.get("ats") == "pending":
@@ -374,7 +441,7 @@ def main():
                 if job["company_id"] == company["id"]
                 and safe_http_url(job.get("url", ""))
             )
-            if company.get("ats") == "greenhouse":
+            if company.get("ats") in {"greenhouse", "workday"}:
                 normalized_jobs.extend(
                     record
                     for record in old_normalized.values()
@@ -383,6 +450,11 @@ def main():
             continue
 
         for raw_job in fetched:
+            if (
+                company.get("ats") == "workday"
+                and raw_job.get("detail_status") != "ok"
+            ):
+                detail_degraded += 1
             job = normalize_fetched_job(raw_job)
             if job is None or not keep(job, company):
                 continue
@@ -410,6 +482,16 @@ def main():
                     first_seen_on=first_seen_on,
                     observed_at=observed_at,
                 )
+            elif company.get("ats") == "workday":
+                normalized = normalize_workday_job(
+                    company,
+                    raw_job,
+                    first_seen_on=first_seen_on,
+                    observed_at=observed_at,
+                )
+            else:
+                normalized = None
+            if company.get("ats") in {"greenhouse", "workday"}:
                 if normalized is None:
                     normalization_skipped += 1
                 else:
@@ -458,8 +540,9 @@ def main():
     print(
         f"完成：{len(jobs)} 个职位在架，"
         f"今日新到 {new_count}，抓取失败 {len(errors)} 家；"
-        f"Greenhouse 标准化 {len(normalized_jobs)} 个，"
-        f"跳过 {normalization_skipped} 个"
+        f"标准化 {len(normalized_jobs)} 个，"
+        f"跳过 {normalization_skipped} 个，"
+        f"Workday 详情降级 {detail_degraded} 个"
     )
     for error in errors:
         print("  !", error)

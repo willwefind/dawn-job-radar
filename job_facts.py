@@ -8,6 +8,7 @@ Every extracted field is either explicit in the source or left unknown.
 from __future__ import annotations
 
 import datetime as dt
+import hashlib
 import html
 import re
 from html.parser import HTMLParser
@@ -473,48 +474,118 @@ def _evidence(field, summary, source_url, observed_at):
     }
 
 
-def normalize_greenhouse_job(
+def _record_id_part(value):
+    normalized = str(value).strip().lower()
+    if re.fullmatch(r"[a-z0-9][a-z0-9._:-]{0,99}", normalized):
+        return normalized
+    return hashlib.sha256(str(value).encode()).hexdigest()[:24]
+
+
+def _build_public_job(
     company,
-    raw_job,
     *,
+    platform,
+    source_job_id,
+    title,
+    raw_location,
+    source_url,
+    description_html,
+    metadata,
+    first_published,
     first_seen_on,
     observed_at,
+    work_arrangement_override=None,
+    employment_type_override=None,
+    country_code_overrides=None,
+    region_overrides=None,
 ):
-    """Build one schema-v1 public record without retaining description HTML."""
+    """Build a schema-v1 record from source-specific public fields."""
 
-    if not isinstance(company, dict) or not isinstance(raw_job, dict):
+    if not isinstance(company, dict):
         return None
     company_id = str(company.get("id") or "").strip().lower()
     company_name = str(company.get("name") or "").strip()
-    source_job_id = str(raw_job.get("source_job_id") or "").strip()
-    title = str(raw_job.get("title") or "").strip()
-    raw_location = str(raw_job.get("location") or "").strip()
-    source_url = _safe_https_url(raw_job.get("url"))
+    source_job_id = str(source_job_id or "").strip()
+    title = str(title or "").strip()
+    raw_location = str(raw_location or "").strip()
+    source_url = _safe_https_url(source_url)
     if (
         not re.fullmatch(r"[a-z0-9][a-z0-9_-]{0,99}", company_id)
         or not company_name
         or not source_job_id
+        or len(source_job_id) > 200
         or not title
         or len(title) > 300
         or not source_url
+        or platform not in {"greenhouse", "workday"}
     ):
         return None
 
-    text = html_to_text(raw_job.get("description_html"))
-    work_arrangement = infer_work_arrangement(raw_location, text)
-    remote_eligibility = infer_remote_eligibility(
-        raw_location,
-        text,
-        work_arrangement,
+    text = html_to_text(description_html)
+    work_arrangement = (
+        work_arrangement_override
+        if work_arrangement_override
+        in {"onsite", "hybrid", "remote", "unknown"}
+        else infer_work_arrangement(raw_location, text)
     )
+    explicit_countries = [
+        code
+        for code in (country_code_overrides or [])
+        if isinstance(code, str) and re.fullmatch(r"[A-Z]{2}", code)
+    ]
+    explicit_regions = [
+        region.strip()
+        for region in (region_overrides or [])
+        if isinstance(region, str) and 2 <= len(region.strip()) <= 80
+    ]
+    if work_arrangement == "remote" and (
+        explicit_countries or explicit_regions
+    ):
+        remote_eligibility = {
+            "scope": "limited",
+            "allowed_countries": list(dict.fromkeys(explicit_countries)),
+            "allowed_regions": list(dict.fromkeys(explicit_regions)),
+        }
+    else:
+        remote_eligibility = infer_remote_eligibility(
+            raw_location,
+            text,
+            work_arrangement,
+        )
     experience = infer_experience(text)
     people_management = infer_people_management(text)
     portfolio = infer_portfolio(text)
-    employment_type = infer_employment_type(
-        title,
-        raw_job.get("metadata"),
+    employment_type = (
+        employment_type_override
+        if employment_type_override
+        in {
+            "full_time",
+            "part_time",
+            "contract",
+            "temporary",
+            "internship",
+            "freelance",
+            "unknown",
+        }
+        else infer_employment_type(title, metadata)
     )
     seniority = infer_people_seniority(title)
+    places = parse_places(raw_location)
+    place_countries = {
+        place["country_code"]
+        for place in places
+        if place["country_code"] is not None
+    }
+    for country_code in explicit_countries:
+        if country_code not in place_countries and len(places) < 20:
+            places.append(
+                {
+                    "city": None,
+                    "region": None,
+                    "country_code": country_code,
+                }
+            )
+            place_countries.add(country_code)
 
     evidence = []
     if raw_location:
@@ -608,9 +679,9 @@ def normalize_greenhouse_job(
 
     return {
         "schema_version": 1,
-        "id": f"greenhouse:{company_id}:{source_job_id.lower()}",
+        "id": f"{platform}:{company_id}:{_record_id_part(source_job_id)}",
         "source": {
-            "platform": "greenhouse",
+            "platform": platform,
             "mode": "automatic",
             "source_job_id": source_job_id,
             "url": source_url,
@@ -622,7 +693,7 @@ def normalize_greenhouse_job(
         },
         "location": {
             "raw": raw_location,
-            "places": parse_places(raw_location),
+            "places": places,
         },
         "work_arrangement": work_arrangement,
         "remote_eligibility": remote_eligibility,
@@ -646,7 +717,7 @@ def normalize_greenhouse_job(
         },
         "summary": None,
         "dates": {
-            "published_on": _iso_date(raw_job.get("first_published")),
+            "published_on": _iso_date(first_published),
             "first_seen_on": first_seen_on,
             "captured_at": observed_at,
         },
@@ -660,3 +731,89 @@ def normalize_greenhouse_job(
             "contains_candidate_data": False,
         },
     }
+
+
+def normalize_greenhouse_job(
+    company,
+    raw_job,
+    *,
+    first_seen_on,
+    observed_at,
+):
+    """Build one Greenhouse record without retaining description HTML."""
+
+    if not isinstance(raw_job, dict):
+        return None
+    return _build_public_job(
+        company,
+        platform="greenhouse",
+        source_job_id=raw_job.get("source_job_id"),
+        title=raw_job.get("title"),
+        raw_location=raw_job.get("location"),
+        source_url=raw_job.get("url"),
+        description_html=raw_job.get("description_html"),
+        metadata=raw_job.get("metadata"),
+        first_published=raw_job.get("first_published"),
+        first_seen_on=first_seen_on,
+        observed_at=observed_at,
+    )
+
+
+def _workday_arrangement(value):
+    words = _normalized_words(str(value or ""))
+    if _has_phrase(words, "remote"):
+        return "remote"
+    if _has_phrase(words, "hybrid"):
+        return "hybrid"
+    if _has_phrase(words, "on site") or _has_phrase(words, "onsite"):
+        return "onsite"
+    return None
+
+
+def _workday_employment_type(value, title):
+    combined = f"{value or ''} {title or ''}".lower()
+    if re.search(r"\b(intern|internship)\b", combined):
+        return "internship"
+    if re.search(r"\bpart[- ]?time\b", combined):
+        return "part_time"
+    if re.search(r"\b(contract|contractor|fixed[- ]term)\b", combined):
+        return "contract"
+    if re.search(r"\btemporary\b", combined):
+        return "temporary"
+    if re.search(r"\bfull[- ]?time\b", combined):
+        return "full_time"
+    return None
+
+
+def normalize_workday_job(
+    company,
+    raw_job,
+    *,
+    first_seen_on,
+    observed_at,
+):
+    """Build one Workday record without retaining description HTML."""
+
+    if not isinstance(raw_job, dict):
+        return None
+    return _build_public_job(
+        company,
+        platform="workday",
+        source_job_id=raw_job.get("source_job_id"),
+        title=raw_job.get("title"),
+        raw_location=raw_job.get("location"),
+        source_url=raw_job.get("url"),
+        description_html=raw_job.get("description_html"),
+        metadata=[],
+        first_published=raw_job.get("first_published"),
+        first_seen_on=first_seen_on,
+        observed_at=observed_at,
+        work_arrangement_override=_workday_arrangement(
+            raw_job.get("remote_type")
+        ),
+        employment_type_override=_workday_employment_type(
+            raw_job.get("time_type"),
+            raw_job.get("title"),
+        ),
+        country_code_overrides=raw_job.get("country_codes"),
+    )
