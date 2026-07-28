@@ -17,7 +17,11 @@ import shutil
 import urllib.parse
 import urllib.request
 
-from job_facts import normalize_greenhouse_job, normalize_workday_job
+from job_facts import (
+    normalize_greenhouse_job,
+    normalize_smartrecruiters_job,
+    normalize_workday_job,
+)
 
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -106,31 +110,134 @@ def fetch_greenhouse(company):
 
 
 def fetch_smartrecruiters(company):
+    slug = urllib.parse.quote(str(company["slug"]), safe="")
+    base = (
+        "https://api.smartrecruiters.com/v1/companies/"
+        f"{slug}/postings"
+    )
     output = []
     offset = 0
+    detail_count = 0
+    try:
+        detail_limit = int(company.get("detail_limit", 80))
+    except (TypeError, ValueError):
+        detail_limit = 80
+    detail_limit = max(0, min(detail_limit, 100))
     while True:
         data = http_json(
-            f"https://api.smartrecruiters.com/v1/companies/{company['slug']}"
-            f"/postings?limit=100&offset={offset}"
+            f"{base}?limit=100&offset={offset}"
         )
         content = data.get("content", [])
         for posting in content:
             location = posting.get("location") or {}
-            location_text = ", ".join(
-                item
-                for item in [location.get("city"), location.get("country")]
-                if item
+            location_text = str(location.get("fullLocation") or "").strip()
+            if not location_text:
+                location_text = ", ".join(
+                    str(item).strip()
+                    for item in [
+                        location.get("city"),
+                        location.get("region"),
+                        location.get("country"),
+                    ]
+                    if str(item or "").strip()
+                )
+            source_job_id = str(
+                posting.get("id") or posting.get("uuid") or ""
             )
-            output.append(
-                {
-                    "title": posting.get("name", ""),
-                    "location": location_text,
-                    "url": (
-                        "https://jobs.smartrecruiters.com/"
-                        f"{company['slug']}/{posting.get('id', '')}"
-                    ),
-                }
+            public_url = (
+                f"https://jobs.smartrecruiters.com/{slug}/{source_job_id}"
+                if source_job_id
+                else ""
             )
+            summary = {
+                "source_job_id": source_job_id,
+                "title": posting.get("name", ""),
+                "location": location_text,
+                "url": public_url,
+                "description_html": "",
+                "first_published": posting.get("releasedDate"),
+                "employment_label": (
+                    posting.get("typeOfEmployment") or {}
+                ).get("label"),
+                "remote": location.get("remote"),
+                "hybrid": location.get("hybrid"),
+                "country_codes": [
+                    str(location["country"]).upper()
+                ]
+                if isinstance(location.get("country"), str)
+                and len(location["country"]) == 2
+                else [],
+                "detail_status": "limit",
+            }
+            if (
+                not normalize_fetched_job(summary)
+                or not keep(summary, company)
+            ):
+                continue
+
+            enriched = dict(summary)
+            if source_job_id and detail_count < detail_limit:
+                detail_count += 1
+                try:
+                    detail = http_json(f"{base}/{source_job_id}")
+                    if detail.get("active") is False:
+                        continue
+                    detail_location = detail.get("location") or {}
+                    sections = (
+                        (detail.get("jobAd") or {}).get("sections") or {}
+                    )
+                    description_html = "\n".join(
+                        str((sections.get(name) or {}).get("text") or "")
+                        for name in (
+                            "jobDescription",
+                            "qualifications",
+                            "additionalInformation",
+                        )
+                    )
+                    detail_country = detail_location.get("country")
+                    country_codes = (
+                        [str(detail_country).upper()]
+                        if isinstance(detail_country, str)
+                        and len(detail_country) == 2
+                        else summary["country_codes"]
+                    )
+                    detail_location_text = str(
+                        detail_location.get("fullLocation") or ""
+                    ).strip()
+                    if not detail_location_text:
+                        detail_location_text = summary["location"]
+                    enriched.update(
+                        {
+                            "source_job_id": str(
+                                detail.get("id")
+                                or detail.get("uuid")
+                                or source_job_id
+                            ),
+                            "title": detail.get("name")
+                            or summary["title"],
+                            "location": detail_location_text,
+                            "url": detail.get("applyUrl")
+                            or summary["url"],
+                            "description_html": description_html,
+                            "first_published": detail.get("releasedDate")
+                            or summary["first_published"],
+                            "employment_label": (
+                                detail.get("typeOfEmployment") or {}
+                            ).get("label")
+                            or summary["employment_label"],
+                            "remote": detail_location.get(
+                                "remote", summary["remote"]
+                            ),
+                            "hybrid": detail_location.get(
+                                "hybrid", summary["hybrid"]
+                            ),
+                            "country_codes": country_codes,
+                            "detail_status": "ok",
+                        }
+                    )
+                except Exception:
+                    enriched["detail_status"] = "unavailable"
+            output.append(enriched)
         offset += len(content)
         if not content or offset >= min(data.get("totalFound", 0), 300):
             break
@@ -441,7 +548,11 @@ def main():
                 if job["company_id"] == company["id"]
                 and safe_http_url(job.get("url", ""))
             )
-            if company.get("ats") in {"greenhouse", "workday"}:
+            if company.get("ats") in {
+                "greenhouse",
+                "smartrecruiters",
+                "workday",
+            }:
                 normalized_jobs.extend(
                     record
                     for record in old_normalized.values()
@@ -451,7 +562,7 @@ def main():
 
         for raw_job in fetched:
             if (
-                company.get("ats") == "workday"
+                company.get("ats") in {"smartrecruiters", "workday"}
                 and raw_job.get("detail_status") != "ok"
             ):
                 detail_degraded += 1
@@ -482,6 +593,13 @@ def main():
                     first_seen_on=first_seen_on,
                     observed_at=observed_at,
                 )
+            elif company.get("ats") == "smartrecruiters":
+                normalized = normalize_smartrecruiters_job(
+                    company,
+                    raw_job,
+                    first_seen_on=first_seen_on,
+                    observed_at=observed_at,
+                )
             elif company.get("ats") == "workday":
                 normalized = normalize_workday_job(
                     company,
@@ -491,7 +609,11 @@ def main():
                 )
             else:
                 normalized = None
-            if company.get("ats") in {"greenhouse", "workday"}:
+            if company.get("ats") in {
+                "greenhouse",
+                "smartrecruiters",
+                "workday",
+            }:
                 if normalized is None:
                     normalization_skipped += 1
                 else:
@@ -542,7 +664,7 @@ def main():
         f"今日新到 {new_count}，抓取失败 {len(errors)} 家；"
         f"标准化 {len(normalized_jobs)} 个，"
         f"跳过 {normalization_skipped} 个，"
-        f"Workday 详情降级 {detail_degraded} 个"
+        f"ATS 详情降级 {detail_degraded} 个"
     )
     for error in errors:
         print("  !", error)

@@ -74,6 +74,130 @@ class CollectionTests(unittest.TestCase):
             jobs[0]["description_html"], "<p>Public description.</p>"
         )
 
+    def test_smartrecruiters_prefilters_before_requesting_details(self):
+        company = {
+            "id": "example",
+            "name": "Example",
+            "track": "Creative",
+            "ats": "smartrecruiters",
+            "slug": "ExampleStudio",
+            "location_keywords": ["Beijing"],
+        }
+        listing = {
+            "totalFound": 2,
+            "content": [
+                {
+                    "id": "1001",
+                    "name": "Visual Designer",
+                    "releasedDate": "2026-07-27T12:00:00Z",
+                    "location": {
+                        "city": "Beijing",
+                        "region": "Beijing",
+                        "country": "cn",
+                        "fullLocation": "Beijing, Beijing, China",
+                        "remote": False,
+                        "hybrid": False,
+                    },
+                    "typeOfEmployment": {"label": "Full-time"},
+                },
+                {
+                    "id": "1002",
+                    "name": "Visual Designer",
+                    "location": {
+                        "city": "Shanghai",
+                        "country": "cn",
+                        "fullLocation": "Shanghai, China",
+                    },
+                },
+            ],
+        }
+        detail = {
+            "id": "1001",
+            "name": "Visual Designer",
+            "releasedDate": "2026-07-27T12:00:00Z",
+            "active": True,
+            "applyUrl": (
+                "https://jobs.smartrecruiters.com/"
+                "ExampleStudio/1001-visual-designer"
+            ),
+            "location": {
+                "city": "Beijing",
+                "region": "Beijing",
+                "country": "cn",
+                "fullLocation": "Beijing, Beijing, China",
+                "remote": False,
+                "hybrid": True,
+            },
+            "typeOfEmployment": {"label": "Full-time"},
+            "jobAd": {
+                "sections": {
+                    "jobDescription": {
+                        "text": "<p>Create visual assets.</p>"
+                    },
+                    "qualifications": {
+                        "text": "<p>1-2 years of experience.</p>"
+                    },
+                    "additionalInformation": {
+                        "text": "<p>Hybrid role.</p>"
+                    },
+                }
+            },
+        }
+
+        def fake_http_json(url, payload=None, timeout=25):
+            if "?limit=" in url:
+                return listing
+            return detail
+
+        with mock.patch.object(
+            radar, "http_json", side_effect=fake_http_json
+        ) as http_json:
+            jobs = radar.fetch_smartrecruiters(company)
+
+        self.assertEqual(len(jobs), 1)
+        self.assertEqual(jobs[0]["source_job_id"], "1001")
+        self.assertEqual(jobs[0]["detail_status"], "ok")
+        self.assertTrue(jobs[0]["hybrid"])
+        self.assertEqual(jobs[0]["country_codes"], ["CN"])
+        self.assertIn("1-2 years", jobs[0]["description_html"])
+        self.assertEqual(http_json.call_count, 2)
+
+    def test_smartrecruiters_detail_failure_degrades_to_summary(self):
+        company = {
+            "id": "example",
+            "name": "Example",
+            "track": "Creative",
+            "ats": "smartrecruiters",
+            "slug": "ExampleStudio",
+        }
+        listing = {
+            "totalFound": 1,
+            "content": [
+                {
+                    "id": "1001",
+                    "name": "Visual Designer",
+                    "location": {
+                        "fullLocation": "Beijing, China",
+                        "country": "cn",
+                    },
+                }
+            ],
+        }
+
+        def fake_http_json(url, payload=None, timeout=25):
+            if "?limit=" in url:
+                return listing
+            raise TimeoutError("detail unavailable")
+
+        with mock.patch.object(
+            radar, "http_json", side_effect=fake_http_json
+        ):
+            jobs = radar.fetch_smartrecruiters(company)
+
+        self.assertEqual(len(jobs), 1)
+        self.assertEqual(jobs[0]["detail_status"], "unavailable")
+        self.assertEqual(jobs[0]["description_html"], "")
+
     def test_workday_prefilters_before_requesting_details(self):
         company = {
             "id": "example",
@@ -382,6 +506,90 @@ class RenderTests(unittest.TestCase):
 
         self.assertEqual(len(normalized), 1)
         self.assertEqual(normalized[0]["source"]["platform"], "greenhouse")
+        serialized = json.dumps(normalized)
+        self.assertNotIn("candidate@example.com", serialized)
+        self.assertNotIn("description_html", serialized)
+
+    def test_main_writes_smartrecruiters_schema_without_raw_description(self):
+        fetched = [
+            {
+                "source_job_id": "7440001001",
+                "title": "Visual Designer",
+                "location": "Beijing, Beijing, China",
+                "url": (
+                    "https://jobs.smartrecruiters.com/"
+                    "ExampleStudio/7440001001-visual-designer"
+                ),
+                "description_html": (
+                    "<p>1+ years of design experience.</p>"
+                    "<p>candidate@example.com</p>"
+                ),
+                "first_published": "2026-07-27T12:00:00Z",
+                "employment_label": "Full-time",
+                "remote": False,
+                "hybrid": True,
+                "country_codes": ["CN"],
+                "detail_status": "ok",
+            }
+        ]
+        config = {
+            "companies": [
+                {
+                    "id": "example",
+                    "name": "Example Studio",
+                    "track": "Creative",
+                    "ats": "smartrecruiters",
+                    "slug": "ExampleStudio",
+                }
+            ]
+        }
+
+        with tempfile.TemporaryDirectory() as directory:
+            docs = os.path.join(directory, "docs")
+            data = os.path.join(directory, "data")
+            os.makedirs(data)
+            with open(
+                os.path.join(directory, "companies.json"),
+                "w",
+                encoding="utf-8",
+            ) as output:
+                json.dump(config, output)
+            with open(
+                os.path.join(directory, "template.html"),
+                "w",
+                encoding="utf-8",
+            ) as output:
+                output.write("<p>template</p>")
+
+            with (
+                mock.patch.multiple(
+                    radar,
+                    ROOT=directory,
+                    DOCS=docs,
+                    DATA_PATH=os.path.join(data, "jobs.json"),
+                    NORMALIZED_DATA_PATH=os.path.join(
+                        data, "jobs.normalized.json"
+                    ),
+                    TODAY="2026-07-28",
+                ),
+                mock.patch.dict(
+                    radar.FETCHERS,
+                    {"smartrecruiters": lambda company: fetched},
+                ),
+            ):
+                radar.main()
+
+            with open(
+                os.path.join(data, "jobs.normalized.json"),
+                encoding="utf-8",
+            ) as source:
+                normalized = json.load(source)
+
+        self.assertEqual(len(normalized), 1)
+        self.assertEqual(
+            normalized[0]["source"]["platform"],
+            "smartrecruiters",
+        )
         serialized = json.dumps(normalized)
         self.assertNotIn("candidate@example.com", serialized)
         self.assertNotIn("description_html", serialized)

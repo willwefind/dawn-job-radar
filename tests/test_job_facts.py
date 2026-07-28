@@ -51,6 +51,29 @@ def raw_workday_job(**overrides):
     return job
 
 
+def raw_smartrecruiters_job(**overrides):
+    job = {
+        "source_job_id": "7440001001",
+        "title": "Visual Design Coordinator",
+        "location": "Beijing, Beijing, China",
+        "url": (
+            "https://jobs.smartrecruiters.com/"
+            "ExampleStudio/7440001001-visual-design-coordinator"
+        ),
+        "description_html": (
+            "<p>1-2 years of visual design experience.</p>"
+        ),
+        "first_published": "2026-07-27T12:00:00Z",
+        "employment_label": "Full-time",
+        "remote": False,
+        "hybrid": True,
+        "country_codes": ["CN"],
+        "detail_status": "ok",
+    }
+    job.update(overrides)
+    return job
+
+
 class TextExtractionTests(unittest.TestCase):
     def test_extracts_text_without_retaining_markup(self):
         text = job_facts.html_to_text(
@@ -275,6 +298,73 @@ class WorkdayNormalizationTests(unittest.TestCase):
         self.assertEqual(
             job["source"]["source_job_id"], "Job Req / 1001"
         )
+
+
+class SmartRecruitersNormalizationTests(unittest.TestCase):
+    def normalize(self, **overrides):
+        return job_facts.normalize_smartrecruiters_job(
+            COMPANY,
+            raw_smartrecruiters_job(**overrides),
+            first_seen_on="2026-07-28",
+            observed_at=OBSERVED_AT,
+        )
+
+    def test_uses_explicit_smartrecruiters_metadata(self):
+        job = self.normalize()
+        self.assertEqual(
+            job["id"],
+            "smartrecruiters:example-studio:7440001001",
+        )
+        self.assertEqual(
+            job["source"]["platform"], "smartrecruiters"
+        )
+        self.assertEqual(job["work_arrangement"], "hybrid")
+        self.assertEqual(job["employment_type"], "full_time")
+        self.assertEqual(
+            job["experience"],
+            {"min_years": 1, "max_years": 2, "explicit": True},
+        )
+        self.assertEqual(job["dates"]["published_on"], "2026-07-27")
+
+    def test_remote_country_is_limited_not_worldwide(self):
+        job = self.normalize(
+            location="Tokyo, Japan",
+            remote=True,
+            hybrid=False,
+            country_codes=["JP"],
+        )
+        self.assertEqual(job["work_arrangement"], "remote")
+        self.assertEqual(
+            job["remote_eligibility"],
+            {
+                "scope": "limited",
+                "allowed_countries": ["JP"],
+                "allowed_regions": [],
+            },
+        )
+
+    def test_never_serializes_smartrecruiters_description(self):
+        marker = "private-contact@example.com"
+        job = self.normalize(
+            description_html=(
+                f"<p>{marker}</p>"
+                "<p>2+ years of visual design experience.</p>"
+            )
+        )
+        serialized = json.dumps(job)
+        self.assertNotIn(marker, serialized)
+        self.assertNotIn("description_html", serialized)
+
+    def test_missing_remote_metadata_stays_unknown(self):
+        job = self.normalize(
+            location="Remote",
+            remote=None,
+            hybrid=None,
+            country_codes=[],
+            description_html="<p>Create visual assets.</p>",
+        )
+        self.assertEqual(job["work_arrangement"], "remote")
+        self.assertEqual(job["remote_eligibility"]["scope"], "unknown")
 
 
 if __name__ == "__main__":

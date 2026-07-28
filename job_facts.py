@@ -517,7 +517,11 @@ def _build_public_job(
         or not title
         or len(title) > 300
         or not source_url
-        or platform not in {"greenhouse", "workday"}
+        or platform not in {
+            "greenhouse",
+            "smartrecruiters",
+            "workday",
+        }
     ):
         return None
 
@@ -770,7 +774,7 @@ def _workday_arrangement(value):
     return None
 
 
-def _workday_employment_type(value, title):
+def _source_employment_type(value, title):
     combined = f"{value or ''} {title or ''}".lower()
     if re.search(r"\b(intern|internship)\b", combined):
         return "internship"
@@ -811,8 +815,53 @@ def normalize_workday_job(
         work_arrangement_override=_workday_arrangement(
             raw_job.get("remote_type")
         ),
-        employment_type_override=_workday_employment_type(
+        employment_type_override=_source_employment_type(
             raw_job.get("time_type"),
+            raw_job.get("title"),
+        ),
+        country_code_overrides=raw_job.get("country_codes"),
+    )
+
+
+def _smartrecruiters_arrangement(remote, hybrid):
+    if hybrid is True:
+        return "hybrid"
+    if remote is True:
+        return "remote"
+    if remote is False:
+        return "onsite"
+    return None
+
+
+def normalize_smartrecruiters_job(
+    company,
+    raw_job,
+    *,
+    first_seen_on,
+    observed_at,
+):
+    """Build one SmartRecruiters record without retaining description HTML."""
+
+    if not isinstance(raw_job, dict):
+        return None
+    return _build_public_job(
+        company,
+        platform="smartrecruiters",
+        source_job_id=raw_job.get("source_job_id"),
+        title=raw_job.get("title"),
+        raw_location=raw_job.get("location"),
+        source_url=raw_job.get("url"),
+        description_html=raw_job.get("description_html"),
+        metadata=[],
+        first_published=raw_job.get("first_published"),
+        first_seen_on=first_seen_on,
+        observed_at=observed_at,
+        work_arrangement_override=_smartrecruiters_arrangement(
+            raw_job.get("remote"),
+            raw_job.get("hybrid"),
+        ),
+        employment_type_override=_source_employment_type(
+            raw_job.get("employment_label"),
             raw_job.get("title"),
         ),
         country_code_overrides=raw_job.get("country_codes"),
