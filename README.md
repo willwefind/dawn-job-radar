@@ -14,6 +14,10 @@
 首次发现日期，再生成 `data/jobs.json`、`docs/jobs.js` 与
 `docs/index.html`。
 
+Greenhouse 来源还会生成 `data/jobs.normalized.json`：描述正文只在运行时内存
+中用于提取经验、工作方式、Remote 地域、作品集和人员管理等明确事实，落盘时
+不保存职位描述全文。无法可靠确认的字段保持 `unknown`。
+
 公开职位流中的“早期”“资深”“技术”只表示标题关键词信号，不代表候选人适配
 结论。页面默认不排除任何一类标题。
 
@@ -36,7 +40,9 @@
 
 - `companies.json`：公开来源清单及当前采集范围；
 - `radar.py`：ATS 采集、去重和静态信息流生成；
+- `job_facts.py`：不保留描述全文的公开职位事实提取；
 - `data/jobs.json`：生成的公开职位快照；
+- `data/jobs.normalized.json`：逐步覆盖各 ATS 的标准化公开职位事实；
 - `template.html`：公共职位流的页面源模板；
 - `docs/index.html`：由 `template.html` 生成的公共职位流；
 - `docs/import.html`：本地辅助筛选页面；
@@ -51,7 +57,7 @@
 ## 本地验证
 
 ```bash
-python -m py_compile radar.py import_jobs.py
+python -m py_compile radar.py job_facts.py import_jobs.py
 python -m unittest discover -s tests
 node --test tests/test_local_filter_core.js
 ```

@@ -17,9 +17,12 @@ import shutil
 import urllib.parse
 import urllib.request
 
+from job_facts import normalize_greenhouse_job
+
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 DATA_PATH = os.path.join(ROOT, "data", "jobs.json")
+NORMALIZED_DATA_PATH = os.path.join(ROOT, "data", "jobs.normalized.json")
 DOCS = os.path.join(ROOT, "docs")
 TODAY = datetime.date.today().isoformat()
 
@@ -86,12 +89,17 @@ def http_json(url, payload=None, timeout=25):
 def fetch_greenhouse(company):
     data = http_json(
         f"https://boards-api.greenhouse.io/v1/boards/{company['slug']}/jobs"
+        "?content=true"
     )
     return [
         {
+            "source_job_id": str(job.get("id") or ""),
             "title": job.get("title", ""),
             "location": (job.get("location") or {}).get("name", ""),
             "url": job.get("absolute_url", ""),
+            "description_html": job.get("content", ""),
+            "metadata": job.get("metadata") or [],
+            "first_published": job.get("first_published"),
         }
         for job in data.get("jobs", [])
     ]
@@ -307,6 +315,30 @@ def render(jobs, errors, config):
     )
 
 
+def _load_normalized_jobs():
+    if not os.path.exists(NORMALIZED_DATA_PATH):
+        return {}
+    with open(NORMALIZED_DATA_PATH, encoding="utf-8") as source:
+        payload = json.load(source)
+    records = payload.get("jobs", []) if isinstance(payload, dict) else payload
+    if not isinstance(records, list):
+        raise ValueError("normalized job data must be a list or jobs envelope")
+    return {
+        record["id"]: record
+        for record in records
+        if isinstance(record, dict) and isinstance(record.get("id"), str)
+    }
+
+
+def _captured_at():
+    return (
+        datetime.datetime.now(datetime.timezone.utc)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
+
+
 def main():
     with open(
         os.path.join(ROOT, "companies.json"), encoding="utf-8"
@@ -320,9 +352,13 @@ def main():
                 job["key"]: job
                 for job in json.load(source)["jobs"]
             }
+    old_normalized = _load_normalized_jobs()
 
     jobs = []
+    normalized_jobs = []
     errors = []
+    normalization_skipped = 0
+    observed_at = _captured_at()
     for company in config["companies"]:
         if company.get("ats") == "pending":
             continue
@@ -338,6 +374,12 @@ def main():
                 if job["company_id"] == company["id"]
                 and safe_http_url(job.get("url", ""))
             )
+            if company.get("ats") == "greenhouse":
+                normalized_jobs.extend(
+                    record
+                    for record in old_normalized.values()
+                    if record.get("company", {}).get("id") == company["id"]
+                )
             continue
 
         for raw_job in fetched:
@@ -346,6 +388,9 @@ def main():
                 continue
             key = job_key(company["id"], job)
             previous = old.get(key)
+            first_seen_on = (
+                previous["first_seen"] if previous else TODAY
+            )
             jobs.append(
                 {
                     "key": key,
@@ -355,11 +400,20 @@ def main():
                     "title": job["title"],
                     "location": job["location"],
                     "url": job["url"],
-                    "first_seen": (
-                        previous["first_seen"] if previous else TODAY
-                    ),
+                    "first_seen": first_seen_on,
                 }
             )
+            if company.get("ats") == "greenhouse":
+                normalized = normalize_greenhouse_job(
+                    company,
+                    raw_job,
+                    first_seen_on=first_seen_on,
+                    observed_at=observed_at,
+                )
+                if normalized is None:
+                    normalization_skipped += 1
+                else:
+                    normalized_jobs.append(normalized)
 
     deduplicated = {}
     for job in jobs:
@@ -368,6 +422,18 @@ def main():
     jobs = sorted(
         deduplicated.values(),
         key=lambda item: (item["first_seen"], item["company"]),
+        reverse=True,
+    )
+    normalized_jobs = sorted(
+        {
+            record["id"]: record
+            for record in normalized_jobs
+        }.values(),
+        key=lambda record: (
+            record["dates"]["first_seen_on"],
+            record["company"]["name"],
+            record["id"],
+        ),
         reverse=True,
     )
 
@@ -379,12 +445,21 @@ def main():
             ensure_ascii=False,
             separators=(",", ":"),
         )
+    with open(NORMALIZED_DATA_PATH, "w", encoding="utf-8") as output:
+        json.dump(
+            normalized_jobs,
+            output,
+            ensure_ascii=False,
+            separators=(",", ":"),
+        )
 
     render(jobs, errors, config)
     new_count = sum(1 for job in jobs if job["first_seen"] == TODAY)
     print(
         f"完成：{len(jobs)} 个职位在架，"
-        f"今日新到 {new_count}，抓取失败 {len(errors)} 家"
+        f"今日新到 {new_count}，抓取失败 {len(errors)} 家；"
+        f"Greenhouse 标准化 {len(normalized_jobs)} 个，"
+        f"跳过 {normalization_skipped} 个"
     )
     for error in errors:
         print("  !", error)

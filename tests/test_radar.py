@@ -45,6 +45,35 @@ class UrlSafetyTests(unittest.TestCase):
 
 
 class CollectionTests(unittest.TestCase):
+    def test_greenhouse_requests_public_content_without_application_fields(self):
+        response = {
+            "jobs": [
+                {
+                    "id": 1001,
+                    "title": "Visual Designer",
+                    "location": {"name": "Remote, US"},
+                    "absolute_url": (
+                        "https://job-boards.greenhouse.io/example/jobs/1001"
+                    ),
+                    "content": "<p>Public description.</p>",
+                    "metadata": [],
+                }
+            ]
+        }
+        with mock.patch.object(
+            radar, "http_json", return_value=response
+        ) as http_json:
+            jobs = radar.fetch_greenhouse({"slug": "example"})
+
+        http_json.assert_called_once_with(
+            "https://boards-api.greenhouse.io/v1/boards/example/jobs"
+            "?content=true"
+        )
+        self.assertEqual(jobs[0]["source_job_id"], "1001")
+        self.assertEqual(
+            jobs[0]["description_html"], "<p>Public description.</p>"
+        )
+
     def test_normalizes_only_public_job_fields(self):
         job = radar.normalize_fetched_job(
             {
@@ -173,6 +202,82 @@ class RenderTests(unittest.TestCase):
                 os.path.join(docs, "index.html"), encoding="utf-8"
             ) as source:
                 self.assertEqual(source.read(), "<p>generated from source</p>")
+
+    def test_main_writes_greenhouse_schema_without_raw_description(self):
+        fetched = [
+            {
+                "source_job_id": "1001",
+                "title": "Junior Visual Designer",
+                "location": "Remote, United States",
+                "url": (
+                    "https://job-boards.greenhouse.io/example/jobs/1001"
+                ),
+                "description_html": (
+                    "<p>3+ years of visual design experience.</p>"
+                    "<p>candidate@example.com</p>"
+                ),
+                "metadata": [],
+                "first_published": "2026-07-26T12:00:00Z",
+            }
+        ]
+        config = {
+            "companies": [
+                {
+                    "id": "example",
+                    "name": "Example Studio",
+                    "track": "Creative",
+                    "ats": "greenhouse",
+                    "slug": "example",
+                }
+            ]
+        }
+
+        with tempfile.TemporaryDirectory() as directory:
+            docs = os.path.join(directory, "docs")
+            data = os.path.join(directory, "data")
+            os.makedirs(data)
+            with open(
+                os.path.join(directory, "companies.json"),
+                "w",
+                encoding="utf-8",
+            ) as output:
+                json.dump(config, output)
+            with open(
+                os.path.join(directory, "template.html"),
+                "w",
+                encoding="utf-8",
+            ) as output:
+                output.write("<p>template</p>")
+
+            with (
+                mock.patch.multiple(
+                    radar,
+                    ROOT=directory,
+                    DOCS=docs,
+                    DATA_PATH=os.path.join(data, "jobs.json"),
+                    NORMALIZED_DATA_PATH=os.path.join(
+                        data, "jobs.normalized.json"
+                    ),
+                    TODAY="2026-07-28",
+                ),
+                mock.patch.dict(
+                    radar.FETCHERS,
+                    {"greenhouse": lambda company: fetched},
+                ),
+            ):
+                radar.main()
+
+            with open(
+                os.path.join(data, "jobs.normalized.json"),
+                encoding="utf-8",
+            ) as source:
+                normalized = json.load(source)
+
+        self.assertEqual(len(normalized), 1)
+        self.assertEqual(normalized[0]["source"]["platform"], "greenhouse")
+        serialized = json.dumps(normalized)
+        self.assertNotIn("candidate@example.com", serialized)
+        self.assertNotIn("description_html", serialized)
 
 
 class PublicPageTests(unittest.TestCase):

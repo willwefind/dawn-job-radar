@@ -20,7 +20,7 @@ jobs:
         with: { python-version: "3.12" }
       - name: 验证
         run: |
-          python -m py_compile radar.py import_jobs.py
+          python -m py_compile radar.py job_facts.py import_jobs.py
           python -m unittest discover -s tests
           node --test tests/test_local_filter_core.js
       - name: 冲洗
