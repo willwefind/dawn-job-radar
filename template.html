@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>职途显影 · Job Radar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600&family=Lora:wght@400;500&family=Noto+Sans+SC:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --dark:#141413; --light:#faf9f5; --mid:#b0aea5; --lightgray:#e8e6dc;
+  --orange:#d97757; --blue:#6a9bcc; --green:#788c5d;
+  --font-head:"Poppins","Noto Sans SC",Arial,sans-serif;
+  --font-body:"Lora","Noto Sans SC",Georgia,serif;
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--light); color:var(--dark);
+  font-family:var(--font-body); line-height:1.7; }
+.wrap { max-width:720px; margin:0 auto; padding:32px 20px 80px; }
+.topline { font-size:12px; color:var(--mid); font-family:ui-monospace,monospace;
+  margin-bottom:20px; }
+h1 { font-family:var(--font-head); font-weight:600; font-size:28px;
+  margin:0 0 6px; letter-spacing:-0.01em; }
+.sub { color:#6b6960; font-size:14px; margin-bottom:24px; }
+.sub b { color:var(--orange); font-weight:500; }
+.errnote { font-size:13px; color:#8a5a3f; background:#f7ede6;
+  border:1px solid #ecd9cc; border-radius:10px; padding:9px 14px;
+  margin-bottom:18px; display:none; }
+.controls { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px; }
+.chip { font-family:var(--font-head); font-weight:500; font-size:13px;
+  color:#55534b; background:#fff; border:1px solid var(--lightgray);
+  border-radius:999px; padding:5px 14px; cursor:pointer; transition:all .18s ease; }
+.chip:hover { border-color:var(--mid); }
+.chip.on { color:#fff; background:var(--dark); border-color:var(--dark); }
+#q { width:100%; font-family:var(--font-body); font-size:15px; color:var(--dark);
+  background:#fff; border:1px solid var(--lightgray); border-radius:12px;
+  padding:11px 15px; margin:8px 0 22px; outline:none; transition:border-color .18s; }
+#q:focus { border-color:var(--blue); }
+#q::placeholder { color:var(--mid); }
+.card { display:block; text-decoration:none; color:inherit; background:#fff;
+  border:1px solid var(--lightgray); border-radius:14px;
+  padding:16px 18px; margin-bottom:12px; transition:all .18s ease; }
+.card:hover { border-color:var(--mid); box-shadow:0 2px 10px rgba(20,20,19,0.06);
+  transform:translateY(-1px); }
+.card-top { display:flex; justify-content:space-between; align-items:baseline; gap:10px; }
+.company { font-family:var(--font-head); font-weight:500; font-size:13px; color:#6b6960; }
+.tags { display:flex; gap:6px; flex-shrink:0; }
+.tag { font-family:var(--font-head); font-size:11px; font-weight:500;
+  border-radius:999px; padding:2px 10px; white-space:nowrap; }
+.tag.t0 { color:var(--orange); background:#f9ece5; }
+.tag.t1 { color:var(--blue); background:#eaf1f8; }
+.tag.t2 { color:var(--green); background:#eef1e8; }
+.tag.early { color:#fff; background:var(--green); }
+.title { font-size:16.5px; font-weight:500; margin:5px 0 3px; }
+.meta { font-size:12.5px; color:var(--mid); }
+.dot { display:inline-block; width:7px; height:7px; border-radius:50%;
+  background:var(--orange); margin-left:7px; vertical-align:middle; }
+.empty { text-align:center; color:var(--mid); padding:56px 0 28px; font-size:15px; display:none; }
+#more { display:block; width:100%; font-family:var(--font-head); font-size:14px;
+  color:#55534b; background:#fff; border:1px dashed var(--lightgray);
+  border-radius:14px; padding:12px; cursor:pointer; margin-top:4px; }
+#more:hover { border-color:var(--mid); }
+footer { text-align:center; font-size:12px; color:var(--mid); margin-top:44px;
+  font-family:var(--font-head); }
+</style></head><body><div class="wrap">
+<div class="topline" id="topline"></div>
+<h1>职途显影</h1>
+<div class="sub" id="sub"></div>
+<div class="errnote" id="errnote"></div>
+<div class="controls" id="controls"></div>
+<input id="q" placeholder="搜职位、公司、城市……">
+<div id="feed"></div>
+<button id="more">加载更多 ↓</button>
+<div class="empty" id="empty">暂时没有符合条件的职位。换个筛选，或明早再来。</div>
+<footer>dawn-job-radar · 每天 07:30 自动更新 · 名单与口味随时可改</footer>
+</div>
+<script src="jobs.js"></script>
+<script>
+const M=window.META,J=window.JOBS;
+let track="*",fresh=false,hideSenior=true,hideTech=true,earlyOnly=false,limit=60;
+const trackColor={};M.tracks.forEach((t,i)=>trackColor[t]="t"+(i%3));
+document.getElementById("topline").textContent=`[${M.yy}｜Ciel｜${M.mood}]`;
+document.getElementById("sub").innerHTML=
+ `在架 <b>${M.total}</b> 个 · 今日新到 <b>${M.new_n}</b> 个 · 更新于 ${M.updated}`;
+if(M.errors.length){const e=document.getElementById("errnote");e.style.display="block";
+ e.textContent=`今日抓取失败：${M.errors.join("、")}。展示的是该公司上一次的数据。`;}
+const ctr=document.getElementById("controls");
+function chip(label,init,fn){const b=document.createElement("button");
+ b.className="chip"+(init?" on":"");b.textContent=label;
+ b.onclick=()=>{fn(b);limit=60;draw();};ctr.appendChild(b);return b;}
+const trackChips=[];
+function tchip(label,val){const b=chip(label,val==="*",()=>{
+ trackChips.forEach(x=>x.classList.remove("on"));b.classList.add("on");track=val;});
+ trackChips.push(b);}
+tchip("全部","*");M.tracks.forEach(t=>tchip(t,t));
+chip("只看新到",false,b=>{fresh=!fresh;b.classList.toggle("on",fresh);});
+chip("隐藏资深岗",true,b=>{hideSenior=!hideSenior;b.classList.toggle("on",hideSenior);});
+chip("隐藏技术岗",true,b=>{hideTech=!hideTech;b.classList.toggle("on",hideTech);});
+chip("校招·早期",false,b=>{earlyOnly=!earlyOnly;b.classList.toggle("on",earlyOnly);});
+const esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function draw(){
+ const q=document.getElementById("q").value.trim().toLowerCase();
+ const hit=J.filter(j=>(track==="*"||j.k===track)
+  &&(!fresh||j.f===M.updated)
+  &&(!hideSenior||j.s!==2)
+  &&(!hideTech||j.r!==1)
+  &&(!earlyOnly||j.s===0)
+  &&(!q||(j.t+" "+j.c+" "+j.l).toLowerCase().includes(q)));
+ document.getElementById("feed").innerHTML=hit.slice(0,limit).map(j=>
+  `<a class="card" href="${esc(j.u)}" target="_blank" rel="noopener">
+   <div class="card-top"><span class="company">${esc(j.c)}</span>
+   <span class="tags">${j.s===0?'<span class="tag early">早期友好</span>':""}
+   <span class="tag ${trackColor[j.k]}">${esc(j.k)}</span></span></div>
+   <div class="title">${esc(j.t)}${j.f===M.updated?' <span class="dot"></span>':""}</div>
+   <div class="meta">${esc(j.l)||"地点未标注"} · 首见 ${j.f}</div></a>`).join("");
+ document.getElementById("empty").style.display=hit.length?"none":"block";
+ document.getElementById("more").style.display=hit.length>limit?"block":"none";
+}
+document.getElementById("more").onclick=()=>{limit+=60;draw();};
+document.getElementById("q").oninput=()=>{limit=60;draw();};
+draw();
+</script></body></html>
