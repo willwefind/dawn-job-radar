@@ -32,6 +32,11 @@
     "not_required",
     "unknown",
   ]);
+  const AUTOMATIC_PUBLIC_PLATFORMS = new Set([
+    "greenhouse",
+    "smartrecruiters",
+    "workday",
+  ]);
   const ASSISTED_PLATFORM_DOMAINS = Object.freeze({
     boss: "zhipin.com",
     linkedin: "linkedin.com",
@@ -1019,6 +1024,75 @@
     );
   }
 
+  function readPublicSnapshot(snapshot, maxJobs = 1000) {
+    if (!Number.isInteger(maxJobs) || maxJobs < 1 || maxJobs > 5000) {
+      throw new TypeError("maxJobs must be an integer from 1 to 5000");
+    }
+    if (!isPlainObject(snapshot)) {
+      throw new TypeError("public snapshot must be an object");
+    }
+
+    const errors = [];
+    rejectUnknownKeys(
+      snapshot,
+      new Set(["schema_version", "updated", "jobs"]),
+      "public snapshot",
+      errors,
+    );
+    if (snapshot.schema_version !== 1) {
+      errors.push("public snapshot schema_version must be 1");
+    }
+    const updatedDate =
+      typeof snapshot.updated === "string" &&
+      /^\d{4}-\d{2}-\d{2}$/.test(snapshot.updated)
+        ? new Date(`${snapshot.updated}T00:00:00Z`)
+        : null;
+    if (
+      updatedDate === null ||
+      Number.isNaN(updatedDate.getTime()) ||
+      updatedDate.toISOString().slice(0, 10) !== snapshot.updated
+    ) {
+      errors.push("public snapshot updated must be an ISO date");
+    }
+    if (!Array.isArray(snapshot.jobs)) {
+      errors.push("public snapshot jobs must be an array");
+    } else if (snapshot.jobs.length > maxJobs) {
+      errors.push(`public snapshot exceeds the ${maxJobs} job limit`);
+    } else {
+      snapshot.jobs.forEach((job, index) => {
+        const validation = validateNormalizedJob(job);
+        if (!validation.valid) {
+          errors.push(
+            `public snapshot job ${index + 1} is invalid: ${
+              validation.errors[0]
+            }`,
+          );
+          return;
+        }
+        if (
+          !AUTOMATIC_PUBLIC_PLATFORMS.has(job.source.platform) ||
+          job.source.mode !== "automatic" ||
+          job.provenance.capture_method !== "public_endpoint" ||
+          job.privacy.visibility !== "public_metadata" ||
+          job.privacy.raw_description !== "not_stored" ||
+          job.privacy.contains_candidate_data !== false
+        ) {
+          errors.push(
+            `public snapshot job ${index + 1} is not public automatic metadata`,
+          );
+        }
+      });
+    }
+
+    if (errors.length) {
+      throw new TypeError(errors.slice(0, 3).join("; "));
+    }
+    return Object.freeze({
+      updated: snapshot.updated,
+      jobs: Object.freeze(snapshot.jobs.slice()),
+    });
+  }
+
   return Object.freeze({
     DEFAULT_PREFERENCES,
     PRESETS,
@@ -1029,5 +1103,6 @@
     evaluateJob,
     evaluateJobs,
     visibleResults,
+    readPublicSnapshot,
   });
 });

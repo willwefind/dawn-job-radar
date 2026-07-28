@@ -77,6 +77,28 @@ function remoteJob(remoteEligibility) {
   });
 }
 
+function publicJob(overrides = {}) {
+  return makeJob({
+    id: "greenhouse:example-studio:public-1",
+    source: {
+      platform: "greenhouse",
+      mode: "automatic",
+      source_job_id: "public-1",
+      url: "https://job-boards.greenhouse.io/example/jobs/public-1",
+    },
+    provenance: {
+      capture_method: "public_endpoint",
+      evidence: [],
+    },
+    privacy: {
+      visibility: "public_metadata",
+      raw_description: "not_stored",
+      contains_candidate_data: false,
+    },
+    ...overrides,
+  });
+}
+
 function reasonCodes(result) {
   return result.reasons.map((reason) => reason.code);
 }
@@ -162,6 +184,81 @@ test("normalized file records reject unsupported top-level fields", () => {
     result.errors.some((error) =>
       error.includes("unsupported fields: private_notes"),
     ),
+  );
+});
+
+test("reads a bounded public automatic snapshot", () => {
+  const snapshot = filter.readPublicSnapshot({
+    schema_version: 1,
+    updated: "2026-07-28",
+    jobs: [publicJob()],
+  });
+  assert.equal(snapshot.updated, "2026-07-28");
+  assert.equal(snapshot.jobs.length, 1);
+  assert.equal(snapshot.jobs[0].privacy.visibility, "public_metadata");
+});
+
+test("rejects local or assisted records in the public snapshot", () => {
+  assert.throws(
+    () =>
+      filter.readPublicSnapshot({
+        schema_version: 1,
+        updated: "2026-07-28",
+        jobs: [makeJob()],
+      }),
+    /not public automatic metadata/,
+  );
+  assert.throws(
+    () =>
+      filter.readPublicSnapshot({
+        schema_version: 1,
+        updated: "2026-07-28",
+        jobs: [
+          publicJob({
+            source: {
+              platform: "custom",
+              mode: "automatic",
+              source_job_id: "public-1",
+              url: "https://example.com/jobs/public-1",
+            },
+          }),
+        ],
+      }),
+    /not public automatic metadata/,
+  );
+});
+
+test("rejects malformed or oversized public snapshots", () => {
+  assert.throws(
+    () =>
+      filter.readPublicSnapshot({
+        schema_version: 1,
+        updated: "2026-02-31",
+        jobs: [],
+      }),
+    /ISO date/,
+  );
+  assert.throws(
+    () =>
+      filter.readPublicSnapshot(
+        {
+          schema_version: 1,
+          updated: "2026-07-28",
+          jobs: [publicJob(), publicJob({ id: "greenhouse:example:2" })],
+        },
+        1,
+      ),
+    /job limit/,
+  );
+  assert.throws(
+    () =>
+      filter.readPublicSnapshot({
+        schema_version: 1,
+        updated: "2026-07-28",
+        jobs: [],
+        private_preferences: {},
+      }),
+    /unsupported fields/,
   );
 });
 

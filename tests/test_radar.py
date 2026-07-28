@@ -376,6 +376,37 @@ class CollectionTests(unittest.TestCase):
 
 
 class RenderTests(unittest.TestCase):
+    def test_writes_safe_same_origin_public_snapshot_script(self):
+        records = [
+            {
+                "id": "greenhouse:example:1",
+                "title": "</script><script>alert(1)</script>&",
+            }
+        ]
+        with tempfile.TemporaryDirectory() as directory:
+            with mock.patch.object(radar, "DOCS", directory):
+                radar._write_public_snapshot(records, "2026-07-28")
+            with open(
+                os.path.join(directory, "jobs.normalized.js"),
+                encoding="utf-8",
+            ) as source:
+                script = source.read()
+
+        self.assertTrue(
+            script.startswith("window.JOB_RADAR_PUBLIC_SNAPSHOT=")
+        )
+        self.assertNotIn("</script>", script)
+        self.assertNotIn("<script>", script)
+        self.assertNotIn("&", script)
+        payload = json.loads(
+            script.removeprefix(
+                "window.JOB_RADAR_PUBLIC_SNAPSHOT="
+            ).removesuffix(";\n")
+        )
+        self.assertEqual(payload["schema_version"], 1)
+        self.assertEqual(payload["updated"], "2026-07-28")
+        self.assertEqual(payload["jobs"], records)
+
     def test_render_drops_unsafe_links_and_copies_source_template(self):
         jobs = [
             {
@@ -503,12 +534,19 @@ class RenderTests(unittest.TestCase):
                 encoding="utf-8",
             ) as source:
                 normalized = json.load(source)
+            with open(
+                os.path.join(docs, "jobs.normalized.js"),
+                encoding="utf-8",
+            ) as source:
+                public_snapshot_script = source.read()
 
         self.assertEqual(len(normalized), 1)
         self.assertEqual(normalized[0]["source"]["platform"], "greenhouse")
         serialized = json.dumps(normalized)
         self.assertNotIn("candidate@example.com", serialized)
         self.assertNotIn("description_html", serialized)
+        self.assertNotIn("candidate@example.com", public_snapshot_script)
+        self.assertNotIn("description_html", public_snapshot_script)
 
     def test_main_writes_smartrecruiters_schema_without_raw_description(self):
         fetched = [
@@ -622,6 +660,21 @@ class PublicPageTests(unittest.TestCase):
         self.assertIn("未知信息不能作为拒绝依据", readme)
         self.assertNotIn("给 Dawn 的私人职位雷达", readme)
         self.assertNotIn("维护：Ciel", readme)
+
+    def test_local_filter_loads_public_snapshot_without_fetch(self):
+        with open(
+            os.path.join(ROOT, "docs", "import.html"),
+            encoding="utf-8",
+        ) as source:
+            page = source.read()
+
+        snapshot_index = page.index('src="jobs.normalized.js"')
+        core_index = page.index('src="local-filter-core.js"')
+        app_index = page.index('src="import-app.js"')
+        self.assertLess(snapshot_index, core_index)
+        self.assertLess(core_index, app_index)
+        self.assertIn('id="load-public-jobs"', page)
+        self.assertIn("connect-src 'none'", page)
 
 
 if __name__ == "__main__":

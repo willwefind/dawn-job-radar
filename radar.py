@@ -503,6 +503,39 @@ def _load_normalized_jobs():
     }
 
 
+def _write_public_snapshot(records, updated):
+    """Write public normalized facts as a same-origin, no-fetch script."""
+
+    payload = {
+        "schema_version": 1,
+        "updated": updated,
+        "jobs": records,
+    }
+    serialized = json.dumps(
+        payload,
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+    serialized = (
+        serialized.replace("&", "\\u0026")
+        .replace("<", "\\u003c")
+        .replace(">", "\\u003e")
+        .replace("\u2028", "\\u2028")
+        .replace("\u2029", "\\u2029")
+    )
+    os.makedirs(DOCS, exist_ok=True)
+    with open(
+        os.path.join(DOCS, "jobs.normalized.js"),
+        "w",
+        encoding="utf-8",
+    ) as output:
+        output.write(
+            "window.JOB_RADAR_PUBLIC_SNAPSHOT="
+            + serialized
+            + ";\n"
+        )
+
+
 def _captured_at():
     return (
         datetime.datetime.now(datetime.timezone.utc)
@@ -657,6 +690,7 @@ def main():
             separators=(",", ":"),
         )
 
+    _write_public_snapshot(normalized_jobs, TODAY)
     render(jobs, errors, config)
     new_count = sum(1 for job in jobs if job["first_seen"] == TODAY)
     print(

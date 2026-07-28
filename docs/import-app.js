@@ -8,13 +8,17 @@
 
   const MAX_FILE_BYTES = 5_000_000;
   const MAX_JOBS = 500;
+  const MAX_PUBLIC_JOBS = 1_000;
   const jobsById = new Map();
+  let publicSnapshot = null;
 
   const elements = {
     form: document.getElementById("job-form"),
     formError: document.getElementById("form-error"),
     file: document.getElementById("job-file"),
     fileNote: document.getElementById("file-note"),
+    loadPublicJobs: document.getElementById("load-public-jobs"),
+    publicSnapshotNote: document.getElementById("public-snapshot-note"),
     workArrangement: document.getElementById("work-arrangement"),
     remoteFields: document.getElementById("remote-fields"),
     remoteScope: document.getElementById("remote-scope"),
@@ -116,7 +120,7 @@
     });
   }
 
-  function addJobs(jobs) {
+  function addJobs(jobs, sourceLabel) {
     let added = 0;
     let duplicates = 0;
     let conflicts = 0;
@@ -146,7 +150,9 @@
     }
 
     render();
-    const parts = [`已加入 ${added} 个职位`];
+    const parts = [
+      `${sourceLabel ? `${sourceLabel}：` : ""}已加入 ${added} 个职位`,
+    ];
     if (duplicates) parts.push(`忽略 ${duplicates} 个重复项`);
     if (conflicts) parts.push(`拒绝 ${conflicts} 个 ID 冲突项`);
     if (invalid) parts.push(`拒绝 ${invalid} 个无效项`);
@@ -154,6 +160,39 @@
       ? `：${invalidMessages.join("；")}`
       : "";
     setMessage(elements.status, `${parts.join("，")}${detail}。`, invalid > 0);
+  }
+
+  function configurePublicSnapshot() {
+    const rawSnapshot = window.JOB_RADAR_PUBLIC_SNAPSHOT;
+    if (rawSnapshot === undefined) {
+      elements.publicSnapshotNote.textContent =
+        "每日公开快照尚未生成；仍可导入本地 JSON 或手动添加。";
+      return;
+    }
+    try {
+      publicSnapshot = core.readPublicSnapshot(
+        rawSnapshot,
+        MAX_PUBLIC_JOBS,
+      );
+      const count = publicSnapshot.jobs.length;
+      elements.publicSnapshotNote.textContent = count
+        ? `更新于 ${publicSnapshot.updated}，共 ${count} 个公开职位；载入后仅停留在当前标签页。`
+        : `更新于 ${publicSnapshot.updated}，当前暂无公开职位。`;
+      elements.loadPublicJobs.disabled = count === 0;
+    } catch {
+      publicSnapshot = null;
+      elements.publicSnapshotNote.textContent =
+        "公开快照未通过安全校验；仍可导入本地 JSON 或手动添加。";
+      elements.loadPublicJobs.disabled = true;
+    }
+  }
+
+  function loadPublicJobs() {
+    if (!publicSnapshot) {
+      setMessage(elements.status, "当前没有可安全载入的公开快照。", true);
+      return;
+    }
+    addJobs(publicSnapshot.jobs, "公开快照");
   }
 
   function resultCard(job, result) {
@@ -350,6 +389,7 @@
   });
 
   elements.file.addEventListener("change", handleFile);
+  elements.loadPublicJobs.addEventListener("click", loadPublicJobs);
   elements.workArrangement.addEventListener("change", updateRemoteFields);
   elements.remoteScope.addEventListener("change", updateRemoteFields);
   elements.preset.addEventListener("click", applyPreset);
@@ -369,6 +409,7 @@
   elements.cities.addEventListener("input", render);
   elements.country.addEventListener("input", render);
 
+  configurePublicSnapshot();
   updateRemoteFields();
   render();
 })();

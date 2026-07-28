@@ -10,6 +10,7 @@
     <meta name="referrer" content="no-referrer">
     <title>本地职位筛选 · Job Radar</title>
     <link rel="stylesheet" href="import.css">
+    <script defer src="jobs.normalized.js"></script>
     <script defer src="local-filter-core.js"></script>
     <script defer src="import-app.js"></script>
   </head>
@@ -24,8 +25,8 @@
         <p class="eyebrow">LOCAL WORKSPACE</p>
         <h1 id="page-title">本地职位筛选</h1>
         <p class="hero-copy">
-          手动整理 BOSS 直聘或 LinkedIn 职位，再按自己的地点、经验和工作方式筛选。
-          所有处理都在当前浏览器标签页内完成。
+          载入每日公开职位，或手动整理 BOSS 直聘与 LinkedIn 职位，再按自己的
+          地点、经验和工作方式筛选。所有判断都在当前浏览器标签页内完成。
         </p>
         <div class="privacy-strip" role="group" aria-label="隐私保证">
           <span>不上传</span>
@@ -41,9 +42,25 @@
             <span class="step">01</span>
             <div>
               <h2 id="intake-title">添加职位</h2>
-              <p>一次填写一个，或选择本地标准 JSON。</p>
+              <p>载入公开快照、选择本地标准 JSON，或一次填写一个。</p>
             </div>
           </div>
+
+          <div class="snapshot-import">
+            <button
+              id="load-public-jobs"
+              class="snapshot-button"
+              type="button"
+              disabled
+            >
+              载入每日公开职位
+            </button>
+            <p id="public-snapshot-note" class="hint" aria-live="polite">
+              正在检查公开快照……
+            </p>
+          </div>
+
+          <div class="divider"><span>或者导入本地 JSON</span></div>
 
           <div class="file-import">
             <label class="file-button" for="job-file">选择 JSON 文件</label>
@@ -53,7 +70,7 @@
             </p>
           </div>
 
-          <div class="divider"><span>或者手动填写</span></div>
+          <div class="divider"><span>或者手动填写一个职位</span></div>
 
           <form id="job-form" novalidate>
             <div class="field-row">
@@ -350,7 +367,7 @@
         <div id="result-list" class="result-list"></div>
         <div id="empty-state" class="empty-state">
           <p>职位会在这里显影。</p>
-          <span>先手动添加一个职位，或选择本地 JSON 文件。</span>
+          <span>先载入每日公开职位、选择本地 JSON，或手动添加一个职位。</span>
         </div>
       </section>
     </main>

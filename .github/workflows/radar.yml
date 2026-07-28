@@ -23,8 +23,11 @@ jobs:
           python -m py_compile radar.py job_facts.py import_jobs.py
           python -m unittest discover -s tests
           node --test tests/test_local_filter_core.js
+          node --check docs/import-app.js
       - name: 冲洗
-        run: python radar.py
+        run: |
+          python radar.py
+          node --check docs/jobs.normalized.js
       - name: 定影
         run: |
           git config user.name "job-radar-bot"

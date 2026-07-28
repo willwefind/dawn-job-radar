@@ -19,6 +19,10 @@ Greenhouse、SmartRecruiters 与 Workday 来源还会生成
 Remote 地域、作品集和人员管理等明确事实，落盘时不保存职位描述全文。无法可靠
 确认的字段保持 `unknown`。
 
+同一批公开事实还会生成 `docs/jobs.normalized.js`。本地辅助筛选页可以由用户
+主动一键载入这份同源快照；页面不发起 `fetch`，筛选条件仍不会写入仓库、
+URL、浏览器存储或公开快照。
+
 SmartRecruiters 与 Workday 会先应用现有公开采集范围，再读取保留下来的职位
 详情；单个详情请求失败时会降级为标题、地点和链接，不会拖垮整家公司，也不会把
 缺失信息猜成确定结论。
@@ -28,9 +32,9 @@ SmartRecruiters 与 Workday 会先应用现有公开采集范围，再读取保�
 
 ### 本地辅助筛选
 
-`docs/import.html` 接受手动录入或标准化 JSON。筛选偏好和导入数据只保留在
-当前浏览器标签页的内存中，刷新或关闭后即消失；页面不上传、不登录、不使用
-浏览器持久化存储，也不会自动投递。
+`docs/import.html` 可以载入每日公开快照，也接受手动录入或标准化 JSON。
+筛选偏好和载入的数据只保留在当前浏览器标签页的内存中，刷新或关闭后即消失；
+页面不上传、不登录、不使用浏览器持久化存储，也不会自动投递。
 
 筛选使用 A/B/C/X 结果：
 
@@ -48,6 +52,7 @@ SmartRecruiters 与 Workday 会先应用现有公开采集范围，再读取保�
 - `job_facts.py`：不保留描述全文的公开职位事实提取；
 - `data/jobs.json`：生成的公开职位快照；
 - `data/jobs.normalized.json`：逐步覆盖各 ATS 的标准化公开职位事实；
+- `docs/jobs.normalized.js`：供筛选页主动载入的生成型公开快照；
 - `template.html`：公共职位流的页面源模板；
 - `docs/index.html`：由 `template.html` 生成的公共职位流；
 - `docs/import.html`：本地辅助筛选页面；
