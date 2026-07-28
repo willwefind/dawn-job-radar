@@ -1,0 +1,305 @@
+{
+  "_说明": "观察名单。ats: greenhouse / smartrecruiters / workday / pending(通路待查)。verified=true 表示 API 已实测打通。",
+  "companies": [
+    {
+      "id": "gitlab",
+      "name": "GitLab",
+      "track": "全球远程",
+      "ats": "greenhouse",
+      "slug": "gitlab",
+      "verified": true,
+      "location_keywords": [],
+      "title_exclude": []
+    },
+    {
+      "id": "figma",
+      "name": "Figma",
+      "track": "设计工具",
+      "ats": "greenhouse",
+      "slug": "figma",
+      "verified": true,
+      "location_keywords": [],
+      "title_exclude": []
+    },
+    {
+      "id": "nvidia",
+      "name": "NVIDIA",
+      "track": "科技大厂",
+      "ats": "workday",
+      "verified": true,
+      "workday": {
+        "host": "nvidia.wd5.myworkdayjobs.com",
+        "tenant": "nvidia",
+        "site": "NVIDIAExternalCareerSite",
+        "search_text": "China"
+      },
+      "location_keywords": [
+        "Beijing"
+      ],
+      "title_exclude": []
+    },
+    {
+      "id": "keywords",
+      "name": "Keywords Studios",
+      "track": "游戏创意",
+      "ats": "smartrecruiters",
+      "slug": "KeywordsStudios",
+      "verified": true,
+      "location_keywords": [
+        "cn",
+        "China",
+        "Shanghai",
+        "Suzhou",
+        "Remote"
+      ],
+      "title_exclude": [
+        "3D",
+        "Technical Artist",
+        "Rigging"
+      ]
+    },
+    {
+      "id": "zoetis",
+      "name": "Zoetis 硕腾",
+      "track": "宠物动物",
+      "ats": "workday",
+      "verified": true,
+      "workday": {
+        "host": "zoetis.wd5.myworkdayjobs.com",
+        "tenant": "zoetis",
+        "site": "zoetis",
+        "search_text": "China"
+      },
+      "location_keywords": [
+        "CHN",
+        "China",
+        "CN -",
+        "Beijing",
+        "Shanghai",
+        "Tianjin",
+        "Suzhou",
+        "Chengdu",
+        "Guangzhou"
+      ],
+      "title_exclude": [
+        "Scientist",
+        "Laboratory",
+        "Research",
+        "Data Engineer",
+        "Data Analyst",
+        "Statistic",
+        "Bioinformatic"
+      ]
+    },
+    {
+      "id": "canva",
+      "name": "Canva 可画",
+      "track": "设计工具",
+      "ats": "pending",
+      "note": "Lever/Greenhouse/Ashby 均未命中，待查真实 ATS"
+    },
+    {
+      "id": "ubisoft",
+      "name": "Ubisoft 育碧",
+      "track": "游戏创意",
+      "ats": "pending",
+      "note": "SmartRecruiters 旧 slug 失效，疑迁移"
+    },
+    {
+      "id": "virtuos",
+      "name": "Virtuos 维塔士",
+      "track": "游戏创意",
+      "ats": "pending",
+      "note": "中国studio在上海/成都/西安，北京无点位——移出优先级"
+    },
+    {
+      "id": "mars-petcare",
+      "name": "Mars 玛氏宠物",
+      "track": "宠物动物",
+      "ats": "workday",
+      "verified": true,
+      "workday": {
+        "host": "mars.wd3.myworkdayjobs.com",
+        "tenant": "mars",
+        "site": "External",
+        "search_text": "China"
+      },
+      "location_keywords": [
+        "CHN",
+        "China",
+        "CN -",
+        "Beijing",
+        "Shanghai",
+        "Tianjin",
+        "Suzhou",
+        "Chengdu",
+        "Guangzhou"
+      ],
+      "title_exclude": [
+        "Scientist",
+        "Laboratory",
+        "Research",
+        "Data Engineer",
+        "Data Analyst",
+        "Statistic",
+        "Bioinformatic"
+      ]
+    },
+    {
+      "id": "royal-canin",
+      "name": "Royal Canin 皇家",
+      "track": "宠物动物",
+      "ats": "pending",
+      "note": "Workday 域名待确认（属玛氏）"
+    },
+    {
+      "id": "boehringer",
+      "name": "勃林格殷格翰动保",
+      "track": "宠物动物",
+      "ats": "pending",
+      "note": "Oracle Taleo（boehringer.taleo.net），需专门写适配器"
+    },
+    {
+      "id": "elanco",
+      "name": "Elanco 礼蓝",
+      "track": "宠物动物",
+      "ats": "workday",
+      "verified": true,
+      "workday": {
+        "host": "elanco.wd5.myworkdayjobs.com",
+        "tenant": "elanco",
+        "site": "External_Career",
+        "search_text": "China"
+      },
+      "location_keywords": [
+        "CHN",
+        "China",
+        "CN -",
+        "Beijing",
+        "Shanghai",
+        "Tianjin",
+        "Suzhou",
+        "Chengdu",
+        "Guangzhou"
+      ],
+      "title_exclude": [
+        "Scientist",
+        "Laboratory",
+        "Research",
+        "Data Engineer",
+        "Data Analyst",
+        "Statistic",
+        "Bioinformatic"
+      ]
+    },
+    {
+      "id": "unity",
+      "name": "Unity",
+      "track": "游戏创意",
+      "ats": "pending",
+      "note": "Greenhouse slug unity3d 返回 0，待查"
+    },
+    {
+      "id": "microsoft",
+      "name": "Microsoft 微软",
+      "track": "科技大厂",
+      "ats": "pending",
+      "note": "自建招聘系统，需单独适配"
+    },
+    {
+      "id": "apple",
+      "name": "Apple 苹果",
+      "track": "科技大厂",
+      "ats": "pending",
+      "note": "自建招聘系统，需单独适配"
+    },
+    {
+      "id": "automattic",
+      "name": "Automattic",
+      "track": "全球远程",
+      "ats": "pending",
+      "note": "Greenhouse slug automattic 返回 0，待查"
+    },
+    {
+      "id": "zoetis-intl",
+      "name": "Zoetis 硕腾(国际站)",
+      "track": "宠物动物",
+      "ats": "workday",
+      "verified": true,
+      "workday": {
+        "host": "zoetis.wd5.myworkdayjobs.com",
+        "tenant": "zoetis",
+        "site": "zoetis_intl",
+        "search_text": "China"
+      },
+      "location_keywords": [
+        "CHN",
+        "China",
+        "CN -",
+        "Beijing",
+        "Shanghai",
+        "Tianjin",
+        "Suzhou",
+        "Chengdu",
+        "Guangzhou"
+      ],
+      "title_exclude": [
+        "Scientist",
+        "Laboratory",
+        "Research",
+        "Data Engineer",
+        "Data Analyst",
+        "Statistic",
+        "Bioinformatic"
+      ]
+    },
+    {
+      "id": "idexx",
+      "name": "IDEXX 爱德士",
+      "track": "宠物动物",
+      "ats": "workday",
+      "verified": true,
+      "workday": {
+        "host": "idexx.wd1.myworkdayjobs.com",
+        "tenant": "idexx",
+        "site": "IDEXX",
+        "search_text": "China"
+      },
+      "location_keywords": [
+        "CHN",
+        "China",
+        "CN -",
+        "Beijing",
+        "Shanghai",
+        "Tianjin",
+        "Suzhou",
+        "Chengdu",
+        "Guangzhou"
+      ],
+      "title_exclude": [
+        "Scientist",
+        "Laboratory",
+        "Research",
+        "Data Engineer",
+        "Data Analyst",
+        "Statistic",
+        "Bioinformatic"
+      ]
+    },
+    {
+      "id": "zhipu",
+      "name": "智谱AI",
+      "track": "AI初创",
+      "ats": "pending",
+      "note": "飞书招聘（SPA），需渲染抓取或抓后端接口；先手动投 zhipu-ai.jobs.feishu.cn"
+    },
+    {
+      "id": "minimax",
+      "name": "MiniMax",
+      "track": "AI初创",
+      "ats": "pending",
+      "note": "飞书招聘，同上；筛北京base"
+    }
+  ],
+  "_规则": "线下岗位只收北京；Remote 岗不受地点限制（后续接入公司同样遵守）"
+}
