@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"
+    >
+    <meta name="referrer" content="no-referrer">
+    <title>本地职位筛选 · Job Radar</title>
+    <link rel="stylesheet" href="import.css">
+    <script defer src="local-filter-core.js"></script>
+    <script defer src="import-app.js"></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="back-link" href="./" aria-label="返回公开职位页">← 公开职位</a>
+      <span class="site-name">Job Radar</span>
+    </header>
+
+    <main>
+      <section class="hero" aria-labelledby="page-title">
+        <p class="eyebrow">LOCAL WORKSPACE</p>
+        <h1 id="page-title">本地职位筛选</h1>
+        <p class="hero-copy">
+          手动整理 BOSS 直聘或 LinkedIn 职位，再按自己的地点、经验和工作方式筛选。
+          所有处理都在当前浏览器标签页内完成。
+        </p>
+        <div class="privacy-strip" role="group" aria-label="隐私保证">
+          <span>不上传</span>
+          <span>不登录</span>
+          <span>不保存</span>
+          <span>不自动投递</span>
+        </div>
+      </section>
+
+      <div class="workspace">
+        <section class="panel intake-panel" aria-labelledby="intake-title">
+          <div class="section-heading">
+            <span class="step">01</span>
+            <div>
+              <h2 id="intake-title">添加职位</h2>
+              <p>一次填写一个，或选择本地标准 JSON。</p>
+            </div>
+          </div>
+
+          <div class="file-import">
+            <label class="file-button" for="job-file">选择 JSON 文件</label>
+            <input id="job-file" type="file" accept=".json,application/json">
+            <p id="file-note" class="hint">
+              支持本项目导入器生成的标准 JSON；最多 5 MB、500 个职位。
+            </p>
+          </div>
+
+          <div class="divider"><span>或者手动填写</span></div>
+
+          <form id="job-form" novalidate>
+            <div class="field-row">
+              <label>
+                <span>来源</span>
+                <select name="source" required>
+                  <option value="boss">BOSS 直聘</option>
+                  <option value="linkedin">LinkedIn</option>
+                </select>
+              </label>
+              <label>
+                <span>工作方式</span>
+                <select name="workArrangement" id="work-arrangement" required>
+                  <option value="onsite">线下</option>
+                  <option value="hybrid">混合办公</option>
+                  <option value="remote">远程</option>
+                  <option value="unknown">未说明</option>
+                </select>
+              </label>
+            </div>
+
+            <label>
+              <span>官方职位链接</span>
+              <input
+                name="url"
+                type="url"
+                inputmode="url"
+                placeholder="https://..."
+                autocomplete="off"
+                required
+              >
+            </label>
+
+            <div class="field-row">
+              <label>
+                <span>职位名称</span>
+                <input name="title" type="text" maxlength="300" autocomplete="off" required>
+              </label>
+              <label>
+                <span>公司</span>
+                <input name="company" type="text" maxlength="200" autocomplete="off" required>
+              </label>
+            </div>
+
+            <label>
+              <span>来源页面显示的地点</span>
+              <input
+                name="locationRaw"
+                type="text"
+                maxlength="500"
+                placeholder="例如：北京·朝阳区 / Remote — China"
+                autocomplete="off"
+                required
+              >
+            </label>
+
+            <div class="field-row">
+              <label>
+                <span>城市（可选）</span>
+                <input name="city" type="text" maxlength="120" placeholder="Beijing" autocomplete="off">
+              </label>
+              <label>
+                <span>国家代码（可选）</span>
+                <input
+                  name="countryCode"
+                  type="text"
+                  maxlength="2"
+                  placeholder="CN"
+                  autocapitalize="characters"
+                  autocomplete="off"
+                >
+              </label>
+            </div>
+
+            <div id="remote-fields" class="conditional-fields" hidden>
+              <div class="field-row">
+                <label>
+                  <span>远程范围</span>
+                  <select name="remoteScope" id="remote-scope">
+                    <option value="unknown">未说明</option>
+                    <option value="worldwide">全球</option>
+                    <option value="limited">限定国家／地区</option>
+                  </select>
+                </label>
+                <label id="allowed-countries-field" hidden>
+                  <span>允许国家代码</span>
+                  <input
+                    name="allowedCountries"
+                    type="text"
+                    placeholder="CN, JP"
+                    autocomplete="off"
+                  >
+                </label>
+              </div>
+              <label id="allowed-regions-field" hidden>
+                <span>允许地区</span>
+                <input
+                  name="allowedRegions"
+                  type="text"
+                  placeholder="例如：APAC（不确定是否包含中国时会保留复核）"
+                  autocomplete="off"
+                >
+              </label>
+            </div>
+
+            <details>
+              <summary>补充判断信息（可选）</summary>
+              <div class="details-content">
+                <div class="field-row">
+                  <label>
+                    <span>最低经验年限</span>
+                    <input name="experienceMinYears" type="number" min="0" max="60">
+                  </label>
+                  <label>
+                    <span>最高经验年限</span>
+                    <input name="experienceMaxYears" type="number" min="0" max="60">
+                  </label>
+                </div>
+                <div class="field-row">
+                  <label>
+                    <span>雇佣类型</span>
+                    <select name="employmentType">
+                      <option value="unknown">未说明</option>
+                      <option value="full_time">全职</option>
+                      <option value="part_time">兼职</option>
+                      <option value="contract">合同</option>
+                      <option value="temporary">临时</option>
+                      <option value="internship">实习</option>
+                      <option value="freelance">自由职业</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>人员管理</span>
+                    <select name="peopleManagement">
+                      <option value="unknown">未说明</option>
+                      <option value="not_required">不要求</option>
+                      <option value="required">明确要求</option>
+                    </select>
+                  </label>
+                </div>
+                <label>
+                  <span>简短事实摘要</span>
+                  <textarea
+                    name="summary"
+                    maxlength="600"
+                    rows="3"
+                    placeholder="不要填写姓名、邮箱、电话或完整职位描述。"
+                  ></textarea>
+                </label>
+              </div>
+            </details>
+
+            <div id="form-error" class="message error" role="alert" hidden></div>
+            <button class="primary-button" type="submit">加入当前列表</button>
+          </form>
+        </section>
+
+        <aside class="panel preference-panel" aria-labelledby="preference-title">
+          <div class="section-heading">
+            <span class="step">02</span>
+            <div>
+              <h2 id="preference-title">设置筛选条件</h2>
+              <p>这些条件不会写入仓库或浏览器存储。</p>
+            </div>
+          </div>
+
+          <button id="beijing-preset" class="preset-button" type="button">
+            套用：北京线下／中国可远程
+          </button>
+
+          <fieldset>
+            <legend>接受的工作方式</legend>
+            <div class="check-grid">
+              <label class="check">
+                <input type="checkbox" name="allowedWorkOnsite" data-allowed-work value="onsite" checked>
+                <span>线下</span>
+              </label>
+              <label class="check">
+                <input type="checkbox" name="allowedWorkHybrid" data-allowed-work value="hybrid" checked>
+                <span>混合</span>
+              </label>
+              <label class="check">
+                <input type="checkbox" name="allowedWorkRemote" data-allowed-work value="remote" checked>
+                <span>远程</span>
+              </label>
+            </div>
+          </fieldset>
+
+          <label>
+            <span>允许的线下／混合城市</span>
+            <input id="pref-cities" type="text" placeholder="留空表示不限制；例如：北京, Beijing">
+          </label>
+
+          <label>
+            <span>远程工作所在国家</span>
+            <input
+              id="pref-country"
+              type="text"
+              maxlength="2"
+              placeholder="留空表示不限制；例如：CN"
+              autocapitalize="characters"
+            >
+          </label>
+
+          <div class="field-row">
+            <label>
+              <span>理想岗位最高要求（年）</span>
+              <input id="pref-experience" type="number" min="0" max="60" placeholder="不限">
+            </label>
+            <label>
+              <span>可尝试岗位最高要求（年）</span>
+              <input id="stretch-experience" type="number" min="0" max="60" placeholder="不限">
+            </label>
+          </div>
+          <p class="field-note">
+            比较的是职位明确写出的最低工作经验要求；留空表示不按经验年限筛选。
+          </p>
+
+          <fieldset>
+            <legend>接受的雇佣类型（全不选表示不限制）</legend>
+            <div class="check-grid">
+              <label class="check">
+                <input type="checkbox" name="acceptFullTime" data-accepted-employment value="full_time">
+                <span>全职</span>
+              </label>
+              <label class="check">
+                <input type="checkbox" name="acceptPartTime" data-accepted-employment value="part_time">
+                <span>兼职</span>
+              </label>
+              <label class="check">
+                <input type="checkbox" name="acceptContract" data-accepted-employment value="contract">
+                <span>合同</span>
+              </label>
+              <label class="check">
+                <input type="checkbox" name="acceptInternship" data-accepted-employment value="internship">
+                <span>实习</span>
+              </label>
+              <label class="check">
+                <input type="checkbox" name="acceptFreelance" data-accepted-employment value="freelance">
+                <span>自由职业</span>
+              </label>
+              <label class="check">
+                <input type="checkbox" name="acceptTemporary" data-accepted-employment value="temporary">
+                <span>临时</span>
+              </label>
+            </div>
+          </fieldset>
+
+          <label class="check standalone-check">
+            <input id="exclude-management" type="checkbox">
+            <span>排除明确要求人员管理的岗位</span>
+          </label>
+
+          <label class="check standalone-check">
+            <input id="show-x" type="checkbox">
+            <span>显示存在明确冲突的 X 类岗位</span>
+          </label>
+
+          <button id="reset-preferences" class="text-button" type="button">
+            恢复中立条件
+          </button>
+          <div id="preference-error" class="message error" role="alert" hidden></div>
+        </aside>
+      </div>
+
+      <section class="results-section" aria-labelledby="results-title">
+        <div class="results-heading">
+          <div class="section-heading">
+            <span class="step">03</span>
+            <div>
+              <h2 id="results-title">查看结果</h2>
+              <p id="session-note">当前标签页还没有职位。</p>
+            </div>
+          </div>
+          <div class="result-actions">
+            <button id="download-jobs" class="secondary-button" type="button" disabled>
+              下载标准 JSON
+            </button>
+            <button id="clear-jobs" class="text-button danger" type="button" disabled>
+              清空本页数据
+            </button>
+          </div>
+        </div>
+
+        <div class="summary-grid" role="group" aria-label="筛选结果统计">
+          <div class="summary-card outcome-a"><strong id="count-a">0</strong><span>A 合适</span></div>
+          <div class="summary-card outcome-b"><strong id="count-b">0</strong><span>B 可尝试</span></div>
+          <div class="summary-card outcome-c"><strong id="count-c">0</strong><span>C 待确认</span></div>
+          <div class="summary-card outcome-x"><strong id="count-x">0</strong><span>X 明确冲突</span></div>
+          <div class="summary-card invalid"><strong id="count-invalid">0</strong><span>格式无效</span></div>
+        </div>
+
+        <div id="status-message" class="message" role="status" aria-live="polite" hidden></div>
+        <div id="result-list" class="result-list"></div>
+        <div id="empty-state" class="empty-state">
+          <p>职位会在这里显影。</p>
+          <span>先手动添加一个职位，或选择本地 JSON 文件。</span>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>数据仅停留在当前标签页；刷新或关闭后即消失。</p>
+    </footer>
+  </body>
+</html>
