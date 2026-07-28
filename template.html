@@ -25,6 +25,17 @@ h1 { font-family:var(--font-head); font-weight:600; font-size:28px;
 .errnote { font-size:13px; color:#8a5a3f; background:#f7ede6;
   border:1px solid #ecd9cc; border-radius:10px; padding:9px 14px;
   margin-bottom:18px; display:none; }
+.workspace-entry { display:flex; align-items:center; justify-content:space-between;
+  gap:16px; background:#fff; border:1px solid var(--lightgray);
+  border-radius:14px; padding:12px 15px; margin-bottom:18px; }
+.workspace-link { flex-shrink:0; font-family:var(--font-head); font-size:13px;
+  font-weight:600; color:var(--dark); text-decoration:none; }
+.workspace-link:hover { color:var(--orange); }
+.workspace-note { color:#77746b; font-size:12px; line-height:1.5; text-align:right; }
+@media (max-width:520px) {
+  .workspace-entry { align-items:flex-start; flex-direction:column; gap:4px; }
+  .workspace-note { text-align:left; }
+}
 .controls { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px; }
 .chip { font-family:var(--font-head); font-weight:500; font-size:13px;
   color:#55534b; background:#fff; border:1px solid var(--lightgray);
@@ -66,6 +77,10 @@ footer { text-align:center; font-size:12px; color:var(--mid); margin-top:44px;
 <h1>职途显影</h1>
 <div class="sub" id="sub"></div>
 <div class="errnote" id="errnote"></div>
+<div class="workspace-entry">
+  <a class="workspace-link" href="import.html">本地导入与筛选 →</a>
+  <span class="workspace-note">BOSS／LinkedIn 手动导入 · 数据仅留在当前标签页</span>
+</div>
 <div class="controls" id="controls"></div>
 <input id="q" type="search" placeholder="搜职位、公司、城市……">
 <div id="feed"></div>
