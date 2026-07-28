@@ -1,18 +1,71 @@
 # dawn-job-radar · 职途显影
 
-给 Dawn 的私人职位雷达。每天早上 07:30（北京时间）自动从观察名单里各外企的
-公开招聘接口（Greenhouse / SmartRecruiters / Workday）拉取在招职位，
-合并去重后渲染成一页信息流，像刷 X 一样随时打开看。
+一个可复用、可审查、重视隐私的职位雷达。项目从公司公开招聘接口
+（Greenhouse、SmartRecruiters、Workday）采集职位事实，生成静态信息流，
+并提供完全在浏览器本地运行的辅助筛选页面。
 
-- `companies.json` —— 观察名单。加公司、改关键词、拉黑岗位类型都在这里。
-- `radar.py` —— 抓取 + 过滤 + 渲染，零第三方依赖。
-- `data/jobs.json` —— 当前在架职位快照（含首见日期）。
-- `docs/index.html` —— 信息流页面（GitHub Pages 指向 `main` 分支 `/docs` 目录即可）。
-- `.github/workflows/radar.yml` —— 每日班车；Actions 页也能手动触发。
+它不会自动投递、登录招聘账号或替用户发送任何内容。
 
-## 口味规则
-- `title_exclude`：命中即剔除（宠物动物线已剔除数据/实验/研究类岗位）。
-- `location_keywords`：留空 = 不限地点；填了 = 只留命中的。
-- `ats: "pending"` 的公司是待打通名单，不参与抓取。
+## 两条数据路径
 
-维护：Ciel。验收：Dawn。
+### 公共职位流
+
+`radar.py` 定期读取公开 ATS 数据，保留职位名称、公司、公开地点、原始链接和
+首次发现日期，再生成 `data/jobs.json`、`docs/jobs.js` 与
+`docs/index.html`。
+
+公开职位流中的“早期”“资深”“技术”只表示标题关键词信号，不代表候选人适配
+结论。页面默认不排除任何一类标题。
+
+### 本地辅助筛选
+
+`docs/import.html` 接受手动录入或标准化 JSON。筛选偏好和导入数据只保留在
+当前浏览器标签页的内存中，刷新或关闭后即消失；页面不上传、不登录、不使用
+浏览器持久化存储，也不会自动投递。
+
+筛选使用 A/B/C/X 结果：
+
+- A：当前条件下没有发现明确冲突；
+- B：超过理想范围但仍在可尝试范围；
+- C：信息不足，需要人工确认；
+- X：存在明确、可追溯的硬性冲突。
+
+只有 X 可以默认隐藏。未知信息不能作为拒绝依据。
+
+## 主要文件
+
+- `companies.json`：公开来源清单及当前采集范围；
+- `radar.py`：ATS 采集、去重和静态信息流生成；
+- `data/jobs.json`：生成的公开职位快照；
+- `template.html`：公共职位流的页面源模板；
+- `docs/index.html`：由 `template.html` 生成的公共职位流；
+- `docs/import.html`：本地辅助筛选页面；
+- `schemas/job.schema.json`：标准化职位数据格式；
+- `sources.json`：来源能力与安全边界；
+- `.github/workflows/radar.yml`：定时更新工作流。
+
+`companies.json` 里的 `location_keywords` 与 `title_exclude` 目前只用于控制
+旧采集管线的范围，不是候选人适配判断。后续标准化管线会把职位事实与用户偏好
+彻底分开。
+
+## 本地验证
+
+```bash
+python -m py_compile radar.py import_jobs.py
+python -m unittest discover -s tests
+node --test tests/test_local_filter_core.js
+```
+
+运行抓取和生成：
+
+```bash
+python radar.py
+```
+
+## 隐私与安全
+
+仓库只应包含源代码、公开职位事实、通用规则和虚构示例。请勿提交真实简历、
+联系方式、申请记录、招聘者对话、面试笔记、私人评价、Cookie、令牌或其他凭据。
+
+职位链接只允许使用不含账号信息的 HTTP/HTTPS 地址。使用任何职位信息前，请回到
+原始招聘页面核对地点、资格、职责和有效期。
