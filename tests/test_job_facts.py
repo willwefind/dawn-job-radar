@@ -136,8 +136,8 @@ class FactInferenceTests(unittest.TestCase):
 
     def test_parses_remote_country_and_region_scope(self):
         scope = job_facts.infer_remote_eligibility(
-            "Remote, Canada; Remote, United Kingdom; Remote, APAC",
-            "",
+            "Remote",
+            "Candidates must be based in Canada, the UK, or APAC.",
             "remote",
         )
         self.assertEqual(scope["scope"], "limited")
@@ -152,6 +152,46 @@ class FactInferenceTests(unittest.TestCase):
                 "allowed_countries": [],
                 "allowed_regions": [],
             },
+        )
+
+    def test_remote_location_is_not_treated_as_eligibility(self):
+        self.assertEqual(
+            job_facts.infer_remote_eligibility(
+                "Remote, United States",
+                "Create visual assets with the product team.",
+                "remote",
+            ),
+            {
+                "scope": "unknown",
+                "allowed_countries": [],
+                "allowed_regions": [],
+            },
+        )
+
+    def test_extracts_explicit_remote_authorization_sentence(self):
+        self.assertEqual(
+            job_facts.infer_remote_eligibility(
+                "Tokyo, Japan",
+                (
+                    "Applicants must be currently residing in Japan and "
+                    "possess valid authorization to work in Japan."
+                ),
+                "remote",
+            ),
+            {
+                "scope": "limited",
+                "allowed_countries": ["JP"],
+                "allowed_regions": [],
+            },
+        )
+
+    def test_plain_location_is_not_treated_as_onsite(self):
+        self.assertEqual(
+            job_facts.infer_work_arrangement(
+                "Beijing, China",
+                "Create visual assets with the product team.",
+            ),
+            "unknown",
         )
 
     def test_parses_beijing_as_a_public_place_fact(self):
@@ -182,9 +222,7 @@ class GreenhouseNormalizationTests(unittest.TestCase):
         self.assertEqual(job["id"], "greenhouse:example-studio:1001")
         self.assertEqual(job["source"]["mode"], "automatic")
         self.assertEqual(job["work_arrangement"], "remote")
-        self.assertEqual(
-            job["remote_eligibility"]["allowed_countries"], ["US"]
-        )
+        self.assertEqual(job["remote_eligibility"]["scope"], "unknown")
         self.assertEqual(
             job["experience"],
             {"min_years": 3, "max_years": None, "explicit": True},
@@ -261,7 +299,7 @@ class WorkdayNormalizationTests(unittest.TestCase):
         )
         self.assertEqual(job["dates"]["published_on"], "2026-07-20")
 
-    def test_remote_workday_country_is_limited_not_worldwide(self):
+    def test_remote_workday_location_country_is_not_eligibility(self):
         job = self.normalize(
             location="Remote",
             remote_type="Remote",
@@ -271,8 +309,8 @@ class WorkdayNormalizationTests(unittest.TestCase):
         self.assertEqual(
             job["remote_eligibility"],
             {
-                "scope": "limited",
-                "allowed_countries": ["CN"],
+                "scope": "unknown",
+                "allowed_countries": [],
                 "allowed_regions": [],
             },
         )
@@ -326,7 +364,7 @@ class SmartRecruitersNormalizationTests(unittest.TestCase):
         )
         self.assertEqual(job["dates"]["published_on"], "2026-07-27")
 
-    def test_remote_country_is_limited_not_worldwide(self):
+    def test_remote_location_country_is_not_eligibility(self):
         job = self.normalize(
             location="Tokyo, Japan",
             remote=True,
@@ -337,8 +375,8 @@ class SmartRecruitersNormalizationTests(unittest.TestCase):
         self.assertEqual(
             job["remote_eligibility"],
             {
-                "scope": "limited",
-                "allowed_countries": ["JP"],
+                "scope": "unknown",
+                "allowed_countries": [],
                 "allowed_regions": [],
             },
         )

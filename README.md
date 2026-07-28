@@ -78,6 +78,10 @@ node --test tests/test_local_filter_core.js
 python radar.py
 ```
 
+定时工作流通过 `RADAR_TIMEZONE` 解释“今日”与首次发现日期。本仓库默认在
+`.github/workflows/radar.yml` 中使用 `Asia/Shanghai`；fork 后可以改成自己的
+IANA 时区名称。
+
 ## 隐私与安全
 
 仓库只应包含源代码、公开职位事实、通用规则和虚构示例。请勿提交真实简历、
@@ -85,3 +89,9 @@ python radar.py
 
 职位链接只允许使用不含账号信息的 HTTP/HTTPS 地址。使用任何职位信息前，请回到
 原始招聘页面核对地点、资格、职责和有效期。
+
+## 许可证
+
+本项目自行编写的源代码与文档采用 [MIT License](LICENSE)。公开职位元数据及其
+商标、名称和原始内容仍受各原始来源的权利与条款约束；本项目不主张拥有这些第三方
+内容，也不代表相关公司或招聘平台。

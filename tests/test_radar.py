@@ -3,6 +3,7 @@ import os
 import sys
 import tempfile
 import unittest
+import datetime
 from unittest import mock
 
 
@@ -14,6 +15,33 @@ import radar
 
 
 class UrlSafetyTests(unittest.TestCase):
+    def test_beijing_schedule_uses_beijing_calendar_date(self):
+        instant = datetime.datetime(
+            2026,
+            7,
+            28,
+            23,
+            30,
+            tzinfo=datetime.timezone.utc,
+        )
+        self.assertEqual(
+            radar.today_in_timezone("Asia/Shanghai", instant),
+            "2026-07-29",
+        )
+        self.assertEqual(
+            radar.today_in_timezone("UTC", instant),
+            "2026-07-28",
+        )
+
+    def test_rejects_invalid_or_naive_timezones(self):
+        with self.assertRaises(ValueError):
+            radar.today_in_timezone("Not/A_Timezone")
+        with self.assertRaises(ValueError):
+            radar.today_in_timezone(
+                "UTC",
+                datetime.datetime(2026, 7, 28, 23, 30),
+            )
+
     def test_accepts_public_http_urls(self):
         self.assertEqual(
             radar.safe_http_url(" https://example.com/jobs/1 "),

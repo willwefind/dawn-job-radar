@@ -1,5 +1,5 @@
 {
-  "_说明": "观察名单。ats: greenhouse / smartrecruiters / workday / pending(通路待查)。verified=true 表示 API 已实测打通。",
+  "_说明": "公开来源清单。ats: greenhouse / smartrecruiters / workday / pending（通路待查）；verified=true 表示公开接口已实测。",
   "companies": [
     {
       "id": "gitlab",
@@ -34,7 +34,9 @@
         "search_text": "China"
       },
       "location_keywords": [
-        "Beijing"
+        "CHN",
+        "China",
+        "CN -"
       ],
       "title_exclude": []
     },
@@ -45,18 +47,8 @@
       "ats": "smartrecruiters",
       "slug": "KeywordsStudios",
       "verified": true,
-      "location_keywords": [
-        "cn",
-        "China",
-        "Shanghai",
-        "Suzhou",
-        "Remote"
-      ],
-      "title_exclude": [
-        "3D",
-        "Technical Artist",
-        "Rigging"
-      ]
+      "location_keywords": [],
+      "title_exclude": []
     },
     {
       "id": "zoetis",
@@ -81,15 +73,7 @@
         "Chengdu",
         "Guangzhou"
       ],
-      "title_exclude": [
-        "Scientist",
-        "Laboratory",
-        "Research",
-        "Data Engineer",
-        "Data Analyst",
-        "Statistic",
-        "Bioinformatic"
-      ]
+      "title_exclude": []
     },
     {
       "id": "canva",
@@ -110,7 +94,7 @@
       "name": "Virtuos 维塔士",
       "track": "游戏创意",
       "ats": "pending",
-      "note": "中国studio在上海/成都/西安，北京无点位——移出优先级"
+      "note": "公开招聘入口待确认；中国 studio 主要位于上海、成都和西安"
     },
     {
       "id": "mars-petcare",
@@ -135,15 +119,7 @@
         "Chengdu",
         "Guangzhou"
       ],
-      "title_exclude": [
-        "Scientist",
-        "Laboratory",
-        "Research",
-        "Data Engineer",
-        "Data Analyst",
-        "Statistic",
-        "Bioinformatic"
-      ]
+      "title_exclude": []
     },
     {
       "id": "royal-canin",
@@ -182,15 +158,7 @@
         "Chengdu",
         "Guangzhou"
       ],
-      "title_exclude": [
-        "Scientist",
-        "Laboratory",
-        "Research",
-        "Data Engineer",
-        "Data Analyst",
-        "Statistic",
-        "Bioinformatic"
-      ]
+      "title_exclude": []
     },
     {
       "id": "unity",
@@ -243,15 +211,7 @@
         "Chengdu",
         "Guangzhou"
       ],
-      "title_exclude": [
-        "Scientist",
-        "Laboratory",
-        "Research",
-        "Data Engineer",
-        "Data Analyst",
-        "Statistic",
-        "Bioinformatic"
-      ]
+      "title_exclude": []
     },
     {
       "id": "idexx",
@@ -276,30 +236,22 @@
         "Chengdu",
         "Guangzhou"
       ],
-      "title_exclude": [
-        "Scientist",
-        "Laboratory",
-        "Research",
-        "Data Engineer",
-        "Data Analyst",
-        "Statistic",
-        "Bioinformatic"
-      ]
+      "title_exclude": []
     },
     {
       "id": "zhipu",
       "name": "智谱AI",
       "track": "AI初创",
       "ats": "pending",
-      "note": "飞书招聘（SPA），需渲染抓取或抓后端接口；先手动投 zhipu-ai.jobs.feishu.cn"
+      "note": "飞书招聘（SPA）；自动适配器未实现，当前仅记录公开入口"
     },
     {
       "id": "minimax",
       "name": "MiniMax",
       "track": "AI初创",
       "ats": "pending",
-      "note": "飞书招聘，同上；筛北京base"
+      "note": "飞书招聘（SPA）；自动适配器未实现，当前仅记录公开入口"
     }
   ],
-  "_规则": "线下岗位只收北京；Remote 岗不受地点限制（后续接入公司同样遵守）"
+  "_规则": "location_keywords、title_exclude 与 Workday search_text 仅控制公开采集范围；候选人地点、经验和岗位偏好由本地筛选页配置。"
 }

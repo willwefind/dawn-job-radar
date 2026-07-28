@@ -16,6 +16,7 @@ import re
 import shutil
 import urllib.parse
 import urllib.request
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from job_facts import (
     normalize_greenhouse_job,
@@ -28,7 +29,25 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 DATA_PATH = os.path.join(ROOT, "data", "jobs.json")
 NORMALIZED_DATA_PATH = os.path.join(ROOT, "data", "jobs.normalized.json")
 DOCS = os.path.join(ROOT, "docs")
-TODAY = datetime.date.today().isoformat()
+
+
+def today_in_timezone(timezone_name, now=None):
+    """Return the calendar date for an explicit IANA timezone."""
+
+    try:
+        timezone = ZoneInfo(str(timezone_name))
+    except (ZoneInfoNotFoundError, ValueError) as error:
+        raise ValueError(
+            f"RADAR_TIMEZONE is not a valid IANA timezone: {timezone_name}"
+        ) from error
+    instant = now or datetime.datetime.now(datetime.timezone.utc)
+    if instant.tzinfo is None:
+        raise ValueError("now must include timezone information")
+    return instant.astimezone(timezone).date().isoformat()
+
+
+RADAR_TIMEZONE = os.environ.get("RADAR_TIMEZONE", "UTC")
+TODAY = today_in_timezone(RADAR_TIMEZONE)
 
 UA = {
     "User-Agent": "dawn-job-radar/1.0 (public job feed)",
@@ -445,7 +464,7 @@ def render(jobs, errors, config):
     ]
     meta = {
         "updated": TODAY,
-        "yy": datetime.date.today().strftime("%y/%m/%d"),
+        "yy": datetime.date.fromisoformat(TODAY).strftime("%y/%m/%d"),
         "mood": mood,
         "new_n": sum(
             1 for job in public_jobs if job["first_seen"] == TODAY

@@ -344,6 +344,8 @@ def infer_work_arrangement(raw_location, text):
         return "remote"
     if "hybrid" in location_lower:
         return "hybrid"
+    if re.search(r"\bon[- ]?site\b", location, re.IGNORECASE):
+        return "onsite"
     if re.search(
         r"\b(this|the)\s+(role|position)\s+is\s+(fully\s+)?remote\b"
         r"|\bfully remote (role|position)\b",
@@ -358,13 +360,28 @@ def infer_work_arrangement(raw_location, text):
         re.IGNORECASE,
     ):
         return "hybrid"
-    if location and location_lower not in {
-        "multiple locations",
-        "multiple",
-        "various",
-    }:
+    if re.search(
+        r"\b(this|the)\s+(role|position)\s+is\s+on[- ]?site\b"
+        r"|\bon[- ]?site (role|position)\b",
+        text,
+        re.IGNORECASE,
+    ):
         return "onsite"
     return "unknown"
+
+
+REMOTE_SCOPE_MARKERS = re.compile(
+    r"\b("
+    r"(?:must|required to|need to)\s+(?:be\s+)?"
+    r"(?:currently\s+)?"
+    r"(?:based|located|residing)\s+in"
+    r"|valid\s+(?:work(?:ing)?\s+)?(?:rights|authorization)\s+to\s+work\s+in"
+    r"|remote\s+(?:within|in|from)"
+    r"|open\s+to\s+candidates\s+(?:based|located|residing)\s+in"
+    r"|only\s+(?:hire|hiring|available|considering|eligible)\b"
+    r")",
+    re.IGNORECASE,
+)
 
 
 def infer_remote_eligibility(raw_location, text, work_arrangement):
@@ -385,8 +402,14 @@ def infer_remote_eligibility(raw_location, text, work_arrangement):
             "allowed_countries": [],
             "allowed_regions": [],
         }
-    countries = extract_country_codes(raw_location)
-    regions = extract_regions(raw_location)
+    scope_segments = [
+        segment
+        for segment in _segments(text)
+        if REMOTE_SCOPE_MARKERS.search(segment)
+    ]
+    scope_text = "\n".join(scope_segments)
+    countries = extract_country_codes(scope_text)
+    regions = extract_regions(scope_text)
     return {
         "scope": "limited" if countries or regions else "unknown",
         "allowed_countries": countries,
@@ -497,7 +520,6 @@ def _build_public_job(
     work_arrangement_override=None,
     employment_type_override=None,
     country_code_overrides=None,
-    region_overrides=None,
 ):
     """Build a schema-v1 record from source-specific public fields."""
 
@@ -532,30 +554,16 @@ def _build_public_job(
         in {"onsite", "hybrid", "remote", "unknown"}
         else infer_work_arrangement(raw_location, text)
     )
-    explicit_countries = [
+    location_countries = [
         code
         for code in (country_code_overrides or [])
         if isinstance(code, str) and re.fullmatch(r"[A-Z]{2}", code)
     ]
-    explicit_regions = [
-        region.strip()
-        for region in (region_overrides or [])
-        if isinstance(region, str) and 2 <= len(region.strip()) <= 80
-    ]
-    if work_arrangement == "remote" and (
-        explicit_countries or explicit_regions
-    ):
-        remote_eligibility = {
-            "scope": "limited",
-            "allowed_countries": list(dict.fromkeys(explicit_countries)),
-            "allowed_regions": list(dict.fromkeys(explicit_regions)),
-        }
-    else:
-        remote_eligibility = infer_remote_eligibility(
-            raw_location,
-            text,
-            work_arrangement,
-        )
+    remote_eligibility = infer_remote_eligibility(
+        raw_location,
+        text,
+        work_arrangement,
+    )
     experience = infer_experience(text)
     people_management = infer_people_management(text)
     portfolio = infer_portfolio(text)
@@ -580,7 +588,7 @@ def _build_public_job(
         for place in places
         if place["country_code"] is not None
     }
-    for country_code in explicit_countries:
+    for country_code in location_countries:
         if country_code not in place_countries and len(places) < 20:
             places.append(
                 {
@@ -602,10 +610,12 @@ def _build_public_job(
             )
         )
     if work_arrangement != "unknown":
+        article = "an" if work_arrangement == "onsite" else "a"
         evidence.append(
             _evidence(
                 "work_arrangement",
-                f"The public posting explicitly signals a {work_arrangement} arrangement.",
+                "The public posting explicitly signals "
+                f"{article} {work_arrangement} arrangement.",
                 source_url,
                 observed_at,
             )
@@ -627,7 +637,7 @@ def _build_public_job(
         evidence.append(
             _evidence(
                 "remote_eligibility",
-                "The source location limits remote eligibility to: "
+                "The posting explicitly limits remote eligibility to: "
                 + ", ".join(scope_parts)
                 + ".",
                 source_url,
