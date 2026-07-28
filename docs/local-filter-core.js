@@ -74,6 +74,8 @@
     /(^|[^\d])1[3-9]\d{9}([^\d]|$)/,
     /(^|[^\w])\+\d[\d\s().-]{6,}\d([^\w]|$)/,
   ];
+  const MAX_FOCUS_DIRECTIONS = 30;
+  const MAX_FOCUS_KEYWORDS = 20;
   const TOP_LEVEL_KEYS = new Set([
     "schema_version",
     "id",
@@ -792,6 +794,127 @@
     return value.trim().toLocaleLowerCase("en-US");
   }
 
+  function normalizeFocusDirection(input) {
+    if (!isPlainObject(input)) {
+      throw new TypeError("focus direction must be an object");
+    }
+    const allowedKeys = new Set(["id", "name", "keywords", "active"]);
+    const unknown = Object.keys(input).filter((key) => !allowedKeys.has(key));
+    if (unknown.length) {
+      throw new TypeError(
+        `focus direction contains unsupported fields: ${unknown.join(", ")}`,
+      );
+    }
+
+    const id = requiredText(input.id, "focus direction id", 80);
+    const name = requiredText(input.name, "focus direction name", 60);
+    if (!Array.isArray(input.keywords)) {
+      throw new TypeError("focus direction keywords must be an array");
+    }
+    if (
+      input.keywords.length < 1 ||
+      input.keywords.length > MAX_FOCUS_KEYWORDS
+    ) {
+      throw new TypeError(
+        `focus direction needs 1 to ${MAX_FOCUS_KEYWORDS} keywords`,
+      );
+    }
+
+    const keywords = [];
+    const folded = new Set();
+    for (const item of input.keywords) {
+      const keyword = requiredText(item, "focus direction keyword", 80);
+      const normalized = foldText(keyword);
+      if (!folded.has(normalized)) {
+        folded.add(normalized);
+        keywords.push(keyword);
+      }
+    }
+    if (
+      input.active !== undefined &&
+      typeof input.active !== "boolean"
+    ) {
+      throw new TypeError("focus direction active must be a boolean");
+    }
+
+    return Object.freeze({
+      id,
+      name,
+      keywords: Object.freeze(keywords),
+      active: input.active ?? true,
+    });
+  }
+
+  function normalizeFocusDirections(input) {
+    if (input === undefined) {
+      input = [];
+    }
+    if (!Array.isArray(input)) {
+      throw new TypeError("focus directions must be an array");
+    }
+    if (input.length > MAX_FOCUS_DIRECTIONS) {
+      throw new TypeError(
+        `focus directions cannot exceed ${MAX_FOCUS_DIRECTIONS}`,
+      );
+    }
+    const result = input.map(normalizeFocusDirection);
+    const ids = new Set();
+    for (const direction of result) {
+      if (ids.has(direction.id)) {
+        throw new TypeError(`duplicate focus direction id: ${direction.id}`);
+      }
+      ids.add(direction.id);
+    }
+    return Object.freeze(result);
+  }
+
+  function focusSearchText(job) {
+    const values = [
+      job?.title,
+      job?.company?.name,
+      job?.location?.raw,
+      job?.summary,
+      ...(Array.isArray(job?.classification?.role_families)
+        ? job.classification.role_families
+        : []),
+    ];
+    return foldText(
+      values
+        .filter((value) => typeof value === "string" && value.trim())
+        .join(" "),
+    );
+  }
+
+  function matchingFocusDirections(job, rawDirections) {
+    const directions = normalizeFocusDirections(rawDirections);
+    const searchable = focusSearchText(job);
+    return Object.freeze(
+      directions.filter(
+        (direction) =>
+          direction.active &&
+          direction.keywords.some((keyword) =>
+            searchable.includes(foldText(keyword)),
+          ),
+      ),
+    );
+  }
+
+  function filterJobsByFocus(jobs, rawDirections) {
+    if (!Array.isArray(jobs)) {
+      throw new TypeError("jobs must be an array");
+    }
+    const directions = normalizeFocusDirections(rawDirections);
+    const active = directions.filter((direction) => direction.active);
+    if (!active.length) {
+      return Object.freeze(jobs.slice());
+    }
+    return Object.freeze(
+      jobs.filter(
+        (job) => matchingFocusDirections(job, active).length > 0,
+      ),
+    );
+  }
+
   function addReason(reasons, outcome, code, message) {
     reasons.push(Object.freeze({ outcome, code, message }));
   }
@@ -1098,6 +1221,10 @@
     PRESETS,
     normalizePreferences,
     getPreset,
+    normalizeFocusDirection,
+    normalizeFocusDirections,
+    matchingFocusDirections,
+    filterJobsByFocus,
     validateNormalizedJob,
     createManualJob,
     evaluateJob,
